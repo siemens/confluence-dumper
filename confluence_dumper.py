@@ -21,12 +21,10 @@ def derive_downloaded_file_name(download_url):
     return '%s_%s_%s' % (download_page_id, download_file_type, download_original_file_name)
 
 
-def handle_references(html_content, download_folder, depth=0):
+def handle_html_references(html_content):
     """ Repairs links in the page contents with lokal links.
 
     :param html_content: Confluence HTML content.
-    :param download_folder: Folder to place downloaded files in.
-    :param depth: (optional) Hierarchy depth of the handled Confluence page.
     """
     html_tree = html.fromstring(html_content)
 
@@ -54,14 +52,6 @@ def handle_references(html_content, download_folder, depth=0):
         download_url = link_element.attrib['src']
         downloaded_file_name = derive_downloaded_file_name(download_url)
 
-        # Download file if it does not exist yet
-        downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
-        if not os.path.exists(downloaded_file_path):
-            absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, download_url)
-            utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
-                                            auth=(settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
-            print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
-
         # Replace download file path (also if it was uploaded for another page)
         download_relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, downloaded_file_name)
         link_element.attrib['src'] = download_relative_file_path
@@ -73,6 +63,24 @@ def handle_references(html_content, download_folder, depth=0):
     return html.tostring(html_tree)
 
 
+def download_attachment(download_url, download_folder, depth=0):
+    """ Repairs links in the page contents with lokal links.
+
+    :param download_url: Confluence download URL.
+    :param download_folder: Folder to place downloaded files in.
+    :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    """
+    downloaded_file_name = derive_downloaded_file_name(download_url)
+
+    # Download file if it does not exist yet
+    downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
+    if not os.path.exists(downloaded_file_path):
+        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, download_url)
+        utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
+                                        auth=(settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
+        print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
+
+
 def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0):
     """ Fetches a Confluence page and its child pages (with referenced downloads).
 
@@ -81,9 +89,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     :param download_folder: Folder to place downloaded files in.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
     """
-    page_url = '%s/rest/api/content/%s?expand=children.page,children.attachments,body.view.value' \
+    page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
-    # TODO: Download attachments here, not in handle_references(...)
     response = utils.http_get(page_url, (settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
 
     page_title = response['title']
@@ -93,16 +100,21 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     page_content = response['body']['view']['value']
     file_name = '%s.html' % page_title
     file_path = '%s/%s' % (folder_path, file_name)
-    page_content = handle_references(page_content, download_folder, depth=depth+1)
+    page_content = handle_html_references(page_content)
     # TODO: Replace page title in filename with page id.
     utils.write_html_2_file(file_path, page_title, page_content, html_template)
 
     # Remember this file and all children
     path_collection = {'file_path': file_name, 'page_title': page_title, 'children': []}
 
+    # Download attachments of this page
+    for attachment in response['children']['attachment']['results']:
+        download_url = attachment['_links']['download']
+        download_attachment(download_url, download_folder, depth=depth+1)
+
     # Iterate through all child pages
-    for child in response['children']['page']['results']:
-        paths = fetch_page_recursively(child['id'], folder_path, download_folder, html_template, depth=depth+1)
+    for child_page in response['children']['page']['results']:
+        paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template, depth=depth+1)
         path_collection['children'].append(paths)
 
     return path_collection
@@ -129,6 +141,7 @@ def create_html_index(index_content):
 
 
 def main():
+    """ Main function to start the confluence-dumper. """
     # Delete old export
     if os.path.exists(settings.EXPORT_FOLDER):
         shutil.rmtree(settings.EXPORT_FOLDER)
