@@ -12,6 +12,11 @@ import settings
 def derive_downloaded_file_name(download_url):
     """ Generates the name of a downloaded/exported file.
 
+        Example: /download/attachments/524291/peak.jpeg?version=1&modificationDate=1459521827579&api=v2
+            => <download_folder>/524291_attachments_peak.jpeg
+        Example: /download/thumbnails/524291/Harvey.jpg?version=1&modificationDate=1459521827579&api=v2
+            => <download_folder>/524291_thumbnails_Harvey.jpg
+
     :param download_url: Confluence download URL which is used to derive the downloaded file name.
     """
     download_url_parts = download_url.split('/')
@@ -40,10 +45,6 @@ def handle_html_references(html_content):
             link_element.attrib['href'] = '%s.html' % page_title
 
     # Download file and fix file paths
-    # Example: /download/attachments/524291/peak.jpeg?version=1&modificationDate=1459521827579&api=v2
-    #       => <download_folder>/524291_attachments_peak.jpeg
-    # Example: /download/thumbnails/524291/Harvey.jpg?version=1&modificationDate=1459521827579&api=v2
-    #       => <download_folder>/524291_thumbnails_Harvey.jpg
     # TODO: Handle non-<img> tags as well if necessary.
     # TODO: Support files with different versions as well if necessary.
     xpath_expr = '//img[starts-with(@src, "/download/")]'
