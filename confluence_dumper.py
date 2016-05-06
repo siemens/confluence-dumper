@@ -27,7 +27,7 @@ def derive_downloaded_file_name(download_url):
 
 
 def handle_html_references(html_content):
-    """ Repairs links in the page contents with lokal links.
+    """ Repairs links in the page contents with local links.
 
     :param html_content: Confluence HTML content.
     """
@@ -44,28 +44,26 @@ def handle_html_references(html_content):
             page_title = page_title.replace('+', ' ')
             link_element.attrib['href'] = '%s.html' % page_title
 
-    # Download file and fix file paths
+    # Fix file paths for img tags
     # TODO: Handle non-<img> tags as well if necessary.
     # TODO: Support files with different versions as well if necessary.
     xpath_expr = '//img[starts-with(@src, "/download/")]'
     for link_element in html_tree.xpath(xpath_expr):
-        # Download file if it belongs to this page
-        download_url = link_element.attrib['src']
-        downloaded_file_name = derive_downloaded_file_name(download_url)
-
-        # Replace download file path (also if it was uploaded for another page)
-        download_relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, downloaded_file_name)
-        link_element.attrib['src'] = download_relative_file_path
+        # Replace file path
+        file_url = link_element.attrib['src']
+        file_name = derive_downloaded_file_name(file_url)
+        relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, file_name)
+        link_element.attrib['src'] = relative_file_path
 
         # Add alt attribute if it does not exist yet
         if not 'alt' in link_element.attrib.keys():
-            link_element.attrib['alt'] = download_relative_file_path
+            link_element.attrib['alt'] = relative_file_path
 
     return html.tostring(html_tree)
 
 
 def download_attachment(download_url, download_folder, depth=0):
-    """ Repairs links in the page contents with lokal links.
+    """ Repairs links in the page contents with local links.
 
     :param download_url: Confluence download URL.
     :param download_folder: Folder to place downloaded files in.
@@ -110,6 +108,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     path_collection = {'file_path': file_name, 'page_title': page_title, 'children': []}
 
     # Download attachments of this page
+    # TODO: Outsource/Abstract the following two while loops because of much duplicate code.
     page_url = '%s/rest/api/content/%s/child/attachment?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
     counter = 0
     while page_url:
