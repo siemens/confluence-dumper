@@ -3,6 +3,7 @@
 import requests
 import shutil
 import re
+import urllib
 
 
 def http_get(request_url, auth=None):
@@ -61,3 +62,11 @@ def write_html_2_file(path, title, content, html_template):
         html_content = re.sub(regex_placeholder, replacement, html_content, flags=re.IGNORECASE)
 
     write_2_file(path, html_content)
+
+
+def decode_url(encoded_url):
+    """ Unquotes and decodes a given URL.
+
+    :param encoded_url: Encoded URL
+    """
+    return urllib.unquote(encoded_url).decode('utf8')

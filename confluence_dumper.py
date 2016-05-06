@@ -71,12 +71,13 @@ def download_attachment(download_url, download_folder, depth=0):
     :param download_folder: Folder to place downloaded files in.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
     """
-    downloaded_file_name = derive_downloaded_file_name(download_url)
+    clean_url = utils.decode_url(download_url)
+    downloaded_file_name = derive_downloaded_file_name(clean_url)
 
     # Download file if it does not exist yet
     downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
     if not os.path.exists(downloaded_file_path):
-        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, download_url)
+        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
         utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
                                         auth=(settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
         print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
@@ -109,14 +110,36 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     path_collection = {'file_path': file_name, 'page_title': page_title, 'children': []}
 
     # Download attachments of this page
-    for attachment in response['children']['attachment']['results']:
-        download_url = attachment['_links']['download']
-        download_attachment(download_url, download_folder, depth=depth+1)
+    page_url = '%s/rest/api/content/%s/child/attachment?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
+    counter = 0
+    while page_url:
+        response = utils.http_get(page_url, (settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
+        counter += len(response['results'])
+        for attachment in response['results']:
+            download_url = attachment['_links']['download']
+            download_attachment(download_url, download_folder, depth=depth+1)
+
+        if 'next' in response['_links'].keys():
+            page_url = response['_links']['next']
+            page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
+        else:
+            page_url = None
 
     # Iterate through all child pages
-    for child_page in response['children']['page']['results']:
-        paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template, depth=depth+1)
-        path_collection['children'].append(paths)
+    page_url = '%s/rest/api/content/%s/child/page?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
+    counter = 0
+    while page_url:
+        response = utils.http_get(page_url, (settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
+        counter += len(response['results'])
+        for child_page in response['results']:
+            paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template, depth=depth+1)
+            path_collection['children'].append(paths)
+
+        if 'next' in response['_links'].keys():
+            page_url = response['_links']['next']
+            page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
+        else:
+            page_url = None
 
     return path_collection
 
@@ -160,7 +183,6 @@ def main():
         download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
         os.makedirs(download_folder)
 
-        # TODO: There is a limit of 25 pages by default. It is necessary to add an URL parameter here.
         space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
         response = utils.http_get(space_url, (settings.CONFLUENCE_USER, settings.CONFLUENCE_PW))
         space_name = response['name']
