@@ -18,6 +18,7 @@ def derive_downloaded_file_name(download_url):
             => <download_folder>/524291_thumbnails_Harvey.jpg
 
     :param download_url: Confluence download URL which is used to derive the downloaded file name.
+    :returns: Derived file name.
     """
     download_url_parts = download_url.split('/')
     download_page_id = download_url_parts[3]
@@ -30,6 +31,7 @@ def handle_html_references(html_content):
     """ Repairs links in the page contents with local links.
 
     :param html_content: Confluence HTML content.
+    :returns: Fixed HTML content.
     """
     html_tree = html.fromstring(html_content)
 
@@ -106,6 +108,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     :param folder_path: Folder to place downloaded pages in.
     :param download_folder: Folder to place downloaded files in.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    :returns: Information about downloaded files as a dict.
     """
     page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
@@ -165,6 +168,7 @@ def create_html_index(index_content):
     """ Creates an HTML index (mainly to navigate through the exported pages).
 
     :param index_content: Dictionary which contains file paths, page titles and their children recursively.
+    :returns: Content index as HTML.
     """
     file_path = index_content['file_path']
     page_title = index_content['page_title']
