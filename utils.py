@@ -12,6 +12,8 @@ def http_get(request_url, auth=None, headers=None):
     :param request_url: HTTP URL to request.
     :param auth: (optional) Auth tuple to use HTTP Auth (supported: Basic/Digest/Custom).
     :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
+    :returns: JSON response.
+    :raises: Exception in the case of the server does not answer with HTTP code 200.
     """
     response = requests.get(request_url, auth=auth, headers=headers)
     if response.status_code == 200:
@@ -33,6 +35,8 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None):
         with open(file_path, 'wb') as downloaded_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, downloaded_file)
+    else:
+        raise Exception('Error %s: %s' % (response.status_code, response.reason))
 
 
 def write_2_file(path, content):
@@ -72,3 +76,14 @@ def decode_url(encoded_url):
     :param encoded_url: Encoded URL
     """
     return urllib.unquote(encoded_url).decode('utf8')
+
+
+def is_file_format(file_name, file_extensions):
+    """ Checks whether the extension of the given file is in a list of file extensions.
+
+    :param file_name: Filename to check
+    :param file_extensions: File extensions as a list
+    :returns: True if the list contains the extension of the given file_name
+    """
+    file_extension = file_name.split('.')[-1]
+    return file_extension in file_extensions

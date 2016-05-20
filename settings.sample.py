@@ -18,3 +18,6 @@ HTTP_CUSTOM_HEADERS = None
 EXPORT_FOLDER = 'export'
 DOWNLOAD_SUB_FOLDER = 'attachments'
 TEMPLATE_FILE = 'template.html'
+
+# Supported Confluence image formats
+CONFLUENCE_IMAGE_FORMATS = ['gif', 'jpeg', 'jpg', 'png']

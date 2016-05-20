@@ -62,6 +62,24 @@ def handle_html_references(html_content):
     return html.tostring(html_tree)
 
 
+def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
+    """ Downloads a specific file.
+
+    :param clean_url: Decoded URL to the file.
+    :param download_folder: Folder to place the downloaded file in.
+    :param downloaded_file_name: File name to save the download to.
+    :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    """
+    downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
+
+    # Download file if it does not exist yet
+    if not os.path.exists(downloaded_file_path):
+        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
+        utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
+                                        headers=settings.HTTP_CUSTOM_HEADERS)
+        print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
+
+
 def download_attachment(download_url, download_folder, depth=0):
     """ Repairs links in the page contents with local links.
 
@@ -71,14 +89,14 @@ def download_attachment(download_url, download_folder, depth=0):
     """
     clean_url = utils.decode_url(download_url)
     downloaded_file_name = derive_downloaded_file_name(clean_url)
+    download_file(clean_url, download_folder, downloaded_file_name, depth=depth)
 
-    # Download file if it does not exist yet
-    downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
-    if not os.path.exists(downloaded_file_path):
-        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
-        utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
-                                        headers=settings.HTTP_CUSTOM_HEADERS)
-        print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
+    # Download the thumbnail as well if the attachment is an image
+    thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
+    downloaded_file_name = derive_downloaded_file_name(thumbnail_url)
+    if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_IMAGE_FORMATS):
+        # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
+        download_file(thumbnail_url, download_folder, downloaded_file_name, depth=depth)
 
 
 def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0):
