@@ -71,6 +71,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
     :param download_folder: Folder to place the downloaded file in.
     :param downloaded_file_name: File name to save the download to.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    :returns: Path to the downloaded file.
     """
     downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
 
@@ -81,6 +82,8 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
                                         headers=settings.HTTP_CUSTOM_HEADERS)
         print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
 
+    return downloaded_file_path
+
 
 def download_attachment(download_url, download_folder, depth=0):
     """ Repairs links in the page contents with local links.
@@ -88,17 +91,36 @@ def download_attachment(download_url, download_folder, depth=0):
     :param download_url: Confluence download URL.
     :param download_folder: Folder to place downloaded files in.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    :returns: Path and name of the downloaded file as dict.
     """
     clean_url = utils.decode_url(download_url)
     downloaded_file_name = derive_downloaded_file_name(clean_url)
-    download_file(clean_url, download_folder, downloaded_file_name, depth=depth)
+    downloaded_file_path = download_file(clean_url, download_folder, downloaded_file_name, depth=depth)
 
     # Download the thumbnail as well if the attachment is an image
-    thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
-    downloaded_file_name = derive_downloaded_file_name(thumbnail_url)
-    if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_IMAGE_FORMATS):
+    clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
+    downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
+    if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_IMAGE_FORMATS):
         # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
-        download_file(thumbnail_url, download_folder, downloaded_file_name, depth=depth)
+        download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth)
+
+    return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
+
+
+def create_html_attachment_index(attachments):
+    """ Creates a HTML list for a list of attachments.
+
+    :param attachments: List of attachments.
+    :returns: Attachment list as HTML.
+    """
+    html_content = '\n\n<h2>Attachments</h2>'
+    if len(attachments) > 0:
+        html_content += '<ul>\n'
+        for attachment in attachments:
+            html_content += '\t<li><a href="../../%s">%s</a></li>\n' % (attachment['file_path'],
+                                                                        attachment['file_name'])
+        html_content += '</ul>\n'
+    return html_content
 
 
 def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0):
@@ -113,20 +135,14 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
     response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS)
+    page_content = response['body']['view']['value']
 
     page_title = response['title']
     print '%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id)
 
-    # Export file
-    page_content = response['body']['view']['value']
-    file_name = '%s.html' % page_title
-    file_path = '%s/%s' % (folder_path, file_name)
-    page_content = handle_html_references(page_content)
-    # TODO: Replace page title in filename with page id.
-    utils.write_html_2_file(file_path, page_title, page_content, html_template)
-
     # Remember this file and all children
-    path_collection = {'file_path': file_name, 'page_title': page_title, 'children': []}
+    file_name = '%s.html' % page_title
+    path_collection = {'file_path': file_name, 'page_title': page_title, 'child_pages': [], 'child_attachments': []}
 
     # Download attachments of this page
     # TODO: Outsource/Abstract the following two while loops because of much duplicate code.
@@ -137,13 +153,20 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         counter += len(response['results'])
         for attachment in response['results']:
             download_url = attachment['_links']['download']
-            download_attachment(download_url, download_folder, depth=depth+1)
+            attachment_info = download_attachment(download_url, download_folder, depth=depth+1)
+            path_collection['child_attachments'].append(attachment_info)
 
         if 'next' in response['_links'].keys():
             page_url = response['_links']['next']
             page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
         else:
             page_url = None
+
+    # Export HTML file
+    page_content = handle_html_references(page_content)
+    file_path = '%s/%s' % (folder_path, file_name)
+    page_content += create_html_attachment_index(path_collection['child_attachments'])
+    utils.write_html_2_file(file_path, page_title, page_content, html_template)
 
     # Iterate through all child pages
     page_url = '%s/rest/api/content/%s/child/page?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
@@ -153,7 +176,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         counter += len(response['results'])
         for child_page in response['results']:
             paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template, depth=depth+1)
-            path_collection['children'].append(paths)
+            path_collection['child_pages'].append(paths)
 
         if 'next' in response['_links'].keys():
             page_url = response['_links']['next']
@@ -172,7 +195,7 @@ def create_html_index(index_content):
     """
     file_path = index_content['file_path']
     page_title = index_content['page_title']
-    page_children = index_content['children']
+    page_children = index_content['child_pages']
 
     html_content = '<a href="%s">%s</a>\n' % (file_path, page_title)
 
