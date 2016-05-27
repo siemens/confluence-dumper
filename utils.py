@@ -49,19 +49,24 @@ def write_2_file(path, content):
         the_file.write(content.encode('utf8'))
 
 
-def write_html_2_file(path, title, content, html_template):
+def write_html_2_file(path, title, content, html_template, additional_headers=None):
     """ Writes HTML content to a file using a template.
 
     :param path: Local file path
     :param title: page title
     :param content: page content
     :param html_template: page template; supported placeholders: ``{% title %}``, ``{% content %}``
+    :param additional_headers: (optional) Additional HTML headers.
     """
     html_content = html_template
 
+    # Build additional HTML headers
+    additional_html_headers = '\n\t'.join(additional_headers) if additional_headers else ''
+
     # Replace placeholders
     replacements = {'title': title,
-                    'content': content}
+                    'content': content,
+                    'additional_headers': additional_html_headers}
 
     for placeholder, replacement in replacements.iteritems():
         regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'

@@ -52,6 +52,13 @@ def handle_html_references(html_content):
             page_title = page_title.replace('+', ' ')
             link_element.attrib['href'] = '%s.html' % utils.encode_url(page_title)
 
+    # Fix links to other Confluence pages when page ids are used
+    xpath_expr = '//a[starts-with(@href, "/pages/viewpage.action?pageId=")]'
+    for link_element in html_tree.xpath(xpath_expr):
+        if not link_element.get('class'):
+            page_id = link_element.attrib['href'].split('/pages/viewpage.action?pageId=')[1]
+            link_element.attrib['href'] = '%s.html' % utils.encode_url(page_id)
+
     # Fix attachment links
     xpath_expr = '//a[contains(@class, "confluence-embedded-file")]'
     for link_element in html_tree.xpath(xpath_expr):
@@ -193,6 +200,15 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     page_content += create_html_attachment_index(path_collection['child_attachments'])
     utils.write_html_2_file(file_path, page_title, page_content, html_template)
 
+    # Save another file with page id which forwards to the original one
+    id_file_path = '%s/%s.html' % (folder_path, page_id)
+    id_file_page_title = 'Forward to page %s' % page_title
+    original_file_link = utils.encode_url(file_name)
+    id_file_page_content = settings.HTML_FORWARD_MESSAGE % (original_file_link, page_title)
+    id_file_forward_header = '<meta http-equiv="refresh" content="0; url=%s" />' % original_file_link
+    utils.write_html_2_file(id_file_path, id_file_page_title, id_file_page_content, html_template,
+                            additional_headers=[id_file_forward_header])
+
     # Iterate through all child pages
     page_url = '%s/rest/api/content/%s/child/page?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
     counter = 0
@@ -222,7 +238,7 @@ def create_html_index(index_content):
     page_title = index_content['page_title']
     page_children = index_content['child_pages']
 
-    html_content = '<a href="%s">%s</a>\n' % (utils.encode_url(file_path), page_title)
+    html_content = '<a href="%s">%s</a>' % (utils.encode_url(file_path), page_title)
 
     if len(page_children) > 0:
         html_content += '<ul>\n'

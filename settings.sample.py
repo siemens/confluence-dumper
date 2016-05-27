@@ -24,3 +24,6 @@ CONFLUENCE_THUMBNAIL_FORMATS = ['gif', 'jpeg', 'jpg', 'png']
 
 # Confluence generates image previews for the following file formats
 CONFLUENCE_GENERATED_PREVIEW_FORMATS = ['pdf']
+
+# The following message is displayed for page forwardings
+HTML_FORWARD_MESSAGE = '<a href="%s">If you are not automatically forwarded to %s, please click here!</a>'
