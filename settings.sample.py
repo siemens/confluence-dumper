@@ -19,5 +19,8 @@ EXPORT_FOLDER = 'export'
 DOWNLOAD_SUB_FOLDER = 'attachments'
 TEMPLATE_FILE = 'template.html'
 
-# Supported Confluence image formats
-CONFLUENCE_IMAGE_FORMATS = ['gif', 'jpeg', 'jpg', 'png']
+# Confluence generates thumbnails for the following image formats
+CONFLUENCE_THUMBNAIL_FORMATS = ['gif', 'jpeg', 'jpg', 'png']
+
+# Confluence generates image previews for the following file formats
+CONFLUENCE_GENERATED_PREVIEW_FORMATS = ['pdf']
