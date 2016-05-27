@@ -50,7 +50,7 @@ def handle_html_references(html_content):
         if not link_element.get('class'):
             page_title = link_element.attrib['href'].split('/')[3]
             page_title = page_title.replace('+', ' ')
-            link_element.attrib['href'] = '%s.html' % page_title
+            link_element.attrib['href'] = '%s.html' % utils.encode_url(page_title)
 
     # Fix attachment links
     xpath_expr = '//a[contains(@class, "confluence-embedded-file")]'
@@ -165,7 +165,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     print '%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id)
 
     # Remember this file and all children
-    file_name = '%s.html' % page_title
+    file_name = '%s.html' % utils.encode_url(page_title)
     path_collection = {'file_path': file_name, 'page_title': page_title, 'child_pages': [], 'child_attachments': []}
 
     # Download attachments of this page
@@ -222,7 +222,7 @@ def create_html_index(index_content):
     page_title = index_content['page_title']
     page_children = index_content['child_pages']
 
-    html_content = '<a href="%s">%s</a>\n' % (file_path, page_title)
+    html_content = '<a href="%s">%s</a>\n' % (utils.encode_url(file_path), page_title)
 
     if len(page_children) > 0:
         html_content += '<ul>\n'

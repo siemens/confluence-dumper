@@ -73,9 +73,19 @@ def write_html_2_file(path, title, content, html_template):
 def decode_url(encoded_url):
     """ Unquotes and decodes a given URL.
 
-    :param encoded_url: Encoded URL
+    :param encoded_url: Encoded URL.
+    :returns: Decoded URL.
     """
     return urllib.unquote(encoded_url).decode('utf8')
+
+
+def encode_url(decoded_url):
+    """ Quotes and encodes a given URL.
+
+    :param decoded_url: Decoded URL.
+    :returns: Encoded URL.
+    """
+    return urllib.quote(decoded_url).encode('utf8')
 
 
 def is_file_format(file_name, file_extensions):
