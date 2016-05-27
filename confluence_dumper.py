@@ -18,13 +18,19 @@ def derive_downloaded_file_name(download_url):
             => <download_folder>/524291_thumbnails_Harvey.jpg
 
     :param download_url: Confluence download URL which is used to derive the downloaded file name.
-    :returns: Derived file name.
+    :returns: Derived file name; if derivation is not possible, None is returned.
     """
-    download_url_parts = download_url.split('/')
-    download_page_id = download_url_parts[3]
-    download_file_type = download_url_parts[2]
-    download_original_file_name = download_url_parts[4].split('?')[0]
-    return '%s_%s_%s' % (download_page_id, download_file_type, download_original_file_name)
+    if '/download/' in download_url:
+        download_url_parts = download_url.split('/')
+        download_page_id = download_url_parts[3]
+        download_file_type = download_url_parts[2]
+        download_original_file_name = download_url_parts[4].split('?')[0]
+        return '%s_%s_%s' % (download_page_id, download_file_type, download_original_file_name)
+    elif '/rest/documentConversion/latest/conversion/thumbnail/' in download_url:
+        file_id = download_url.split('/rest/documentConversion/latest/conversion/thumbnail/')[1][0:-2]
+        return 'generated_preview_%s.jpg' % file_id
+    else:
+        return None
 
 
 def handle_html_references(html_content):
@@ -46,20 +52,30 @@ def handle_html_references(html_content):
             page_title = page_title.replace('+', ' ')
             link_element.attrib['href'] = '%s.html' % page_title
 
+    # Fix attachment links
+    xpath_expr = '//a[contains(@class, "confluence-embedded-file")]'
+    for link_element in html_tree.xpath(xpath_expr):
+        file_url = link_element.attrib['href']
+        file_name = derive_downloaded_file_name(file_url)
+        relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, file_name)
+        link_element.attrib['href'] = relative_file_path
+
     # Fix file paths for img tags
     # TODO: Handle non-<img> tags as well if necessary.
     # TODO: Support files with different versions as well if necessary.
-    xpath_expr = '//img[starts-with(@src, "/download/")]'
-    for link_element in html_tree.xpath(xpath_expr):
+    possible_image_xpaths = ['//img[starts-with(@src, "/download/")]',
+                             '//img[starts-with(@src, "/rest/documentConversion/latest/conversion/thumbnail/")]']
+    xpath_expr = '|'.join(possible_image_xpaths)
+    for img_element in html_tree.xpath(xpath_expr):
         # Replace file path
-        file_url = link_element.attrib['src']
+        file_url = img_element.attrib['src']
         file_name = derive_downloaded_file_name(file_url)
         relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, file_name)
-        link_element.attrib['src'] = relative_file_path
+        img_element.attrib['src'] = relative_file_path
 
         # Add alt attribute if it does not exist yet
-        if not 'alt' in link_element.attrib.keys():
-            link_element.attrib['alt'] = relative_file_path
+        if not 'alt' in img_element.attrib.keys():
+            img_element.attrib['alt'] = relative_file_path
 
     return html.tostring(html_tree)
 
@@ -77,7 +93,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
 
     # Download file if it does not exist yet
     if not os.path.exists(downloaded_file_path):
-        absolute_download_url = '%s/%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
+        absolute_download_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
         utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
                                         headers=settings.HTTP_CUSTOM_HEADERS)
         print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
@@ -85,11 +101,12 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
     return downloaded_file_path
 
 
-def download_attachment(download_url, download_folder, depth=0):
+def download_attachment(download_url, download_folder, attachment_id, depth=0):
     """ Repairs links in the page contents with local links.
 
     :param download_url: Confluence download URL.
     :param download_folder: Folder to place downloaded files in.
+    :param attachment_id: ID of the attachment to download.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
     :returns: Path and name of the downloaded file as dict.
     """
@@ -100,9 +117,15 @@ def download_attachment(download_url, download_folder, depth=0):
     # Download the thumbnail as well if the attachment is an image
     clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
     downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
-    if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_IMAGE_FORMATS):
+    if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
         # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
         download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth)
+
+    # Download the image preview as well if Confluence generated one for the attachment
+    if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
+        clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
+        downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
+        download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth)
 
     return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
 
@@ -129,8 +152,9 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     :param page_id: Confluence page id.
     :param folder_path: Folder to place downloaded pages in.
     :param download_folder: Folder to place downloaded files in.
+    :param html_template: HTML template used to export Confluence pages.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
-    :returns: Information about downloaded files as a dict.
+    :returns: Information about downloaded files (pages, attachments, images, ...) as a dict.
     """
     page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
@@ -153,7 +177,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         counter += len(response['results'])
         for attachment in response['results']:
             download_url = attachment['_links']['download']
-            attachment_info = download_attachment(download_url, download_folder, depth=depth+1)
+            attachment_id = attachment['id'][3:]
+            attachment_info = download_attachment(download_url, download_folder, attachment_id, depth=depth+1)
             path_collection['child_attachments'].append(attachment_info)
 
         if 'next' in response['_links'].keys():
