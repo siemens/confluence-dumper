@@ -119,7 +119,7 @@ def download_attachment(download_url, download_folder, attachment_id, depth=0):
     """
     clean_url = utils.decode_url(download_url)
     downloaded_file_name = derive_downloaded_file_name(clean_url)
-    downloaded_file_path = download_file(clean_url, download_folder, downloaded_file_name, depth=depth)
+    downloaded_file_path = download_file(download_url, download_folder, downloaded_file_name, depth=depth)
 
     # Download the thumbnail as well if the attachment is an image
     clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
