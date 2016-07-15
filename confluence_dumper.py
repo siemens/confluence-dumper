@@ -102,7 +102,8 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
     if not os.path.exists(downloaded_file_path):
         absolute_download_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
         utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
-                                        headers=settings.HTTP_CUSTOM_HEADERS)
+                                        headers=settings.HTTP_CUSTOM_HEADERS,
+                                        verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
         print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
 
     return downloaded_file_path
@@ -165,7 +166,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     """
     page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
-    response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS)
+    response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                              verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
     page_content = response['body']['view']['value']
 
     page_title = response['title']
@@ -180,7 +182,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     page_url = '%s/rest/api/content/%s/child/attachment?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
     counter = 0
     while page_url:
-        response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS)
+        response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
         counter += len(response['results'])
         for attachment in response['results']:
             download_url = attachment['_links']['download']
@@ -213,7 +216,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     page_url = '%s/rest/api/content/%s/child/page?limit=25' % (settings.CONFLUENCE_BASE_URL, page_id)
     counter = 0
     while page_url:
-        response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS)
+        response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
         counter += len(response['results'])
         for child_page in response['results']:
             paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template, depth=depth+1)
@@ -269,7 +273,8 @@ def main():
         os.makedirs(download_folder)
 
         space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
-        response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS)
+        response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
         space_name = response['name']
 
         print

@@ -10,6 +10,9 @@ SPACES_TO_EXPORT = ['TES', 'TE2', 'TE3']
 # Example for HTTP Basic Authentication: ('johndoe', 'sup3rs3cur3pw')
 HTTP_AUTHENTICATION = ('johndoe', 'sup3rs3cur3pw')
 
+# Verify x.509 certificate of confluence http server
+VERIFY_PEER_CERTIFICATE = True
+
 # Additional headers
 # Example for custom authentication: {'user': 'johndoe', 'password': 'sup3rs3cur3pw'}
 HTTP_CUSTOM_HEADERS = None

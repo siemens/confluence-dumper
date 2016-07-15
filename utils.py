@@ -6,32 +6,35 @@ import re
 import urllib
 
 
-def http_get(request_url, auth=None, headers=None):
+def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True):
     """ Requests a HTTP url and returns a requested JSON response.
 
     :param request_url: HTTP URL to request.
     :param auth: (optional) Auth tuple to use HTTP Auth (supported: Basic/Digest/Custom).
     :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
+    :param verify_peer_certificate: (optional) Flag to decide whether peer certificate has to be validated.
     :returns: JSON response.
-    :raises: Exception in the case of the server does not answer with HTTP code 200.
+    :raises: Exception in the case of the server does not answer HTTP code 2xx.
     """
-    response = requests.get(request_url, auth=auth, headers=headers)
-    if response.status_code == 200:
+    response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate)
+    if 200 <= response.status_code < 300:
         return response.json()
     else:
         raise Exception('Error %s: %s' % (response.status_code, response.reason))
 
 
-def http_download_binary_file(request_url, file_path, auth=None, headers=None):
+def http_download_binary_file(request_url, file_path, auth=None, headers=None, verify_peer_certificate=True):
     """ Requests a HTTP url to save a file on the local filesystem.
 
     :param request_url: Requested HTTP URL.
     :param file_path: Local file path.
     :param auth: (optional) Auth tuple to use HTTP Auth (supported: Basic/Digest/Custom).
     :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
+    :param verify_peer_certificate: (optional) Flag to decide whether peer certificate has to be validated.
+    :raises: Exception in the case of the server does not answer with HTTP code 2xx.
     """
-    response = requests.get(request_url, stream=True, auth=auth, headers=headers)
-    if response.status_code == 200:
+    response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate)
+    if 200 <= response.status_code < 300:
         with open(file_path, 'wb') as downloaded_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, downloaded_file)
