@@ -6,6 +6,11 @@ import re
 import urllib
 
 
+class ConfluenceException(Exception):
+    def __init__(self, message):
+        super(ConfluenceException, self).__init__(message)
+
+
 def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True):
     """ Requests a HTTP url and returns a requested JSON response.
 
@@ -14,13 +19,13 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True)
     :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
     :param verify_peer_certificate: (optional) Flag to decide whether peer certificate has to be validated.
     :returns: JSON response.
-    :raises: Exception in the case of the server does not answer HTTP code 2xx.
+    :raises: ConfluenceException in the case of the server does not answer HTTP code 200.
     """
     response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate)
-    if 200 <= response.status_code < 300:
+    if 200 == response.status_code:
         return response.json()
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.reason))
+        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason, request_url))
 
 
 def http_download_binary_file(request_url, file_path, auth=None, headers=None, verify_peer_certificate=True):
@@ -31,15 +36,15 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None, v
     :param auth: (optional) Auth tuple to use HTTP Auth (supported: Basic/Digest/Custom).
     :param headers: (optional) Dictionary of HTTP Headers to send with the :class:`Request`.
     :param verify_peer_certificate: (optional) Flag to decide whether peer certificate has to be validated.
-    :raises: Exception in the case of the server does not answer with HTTP code 2xx.
+    :raises: ConfluenceException in the case of the server does not answer with HTTP code 200.
     """
     response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate)
-    if 200 <= response.status_code < 300:
+    if 200 == response.status_code:
         with open(file_path, 'wb') as downloaded_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, downloaded_file)
     else:
-        raise Exception('Error %s: %s' % (response.status_code, response.reason))
+        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason, request_url))
 
 
 def write_2_file(path, content):
