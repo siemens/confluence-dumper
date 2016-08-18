@@ -115,6 +115,15 @@ def encode_url(decoded_url):
     return urllib.quote(decoded_url.encode('utf8')).encode('utf8')
 
 
+def escape_slashes(unescaped_string):
+    """ Escapes slashes to avoid file path injection
+
+    :param unescaped_string: String to escape
+    :returns: Escaped string
+    """
+    return unescaped_string.replace('/', 'SLASH')
+
+
 def is_file_format(file_name, file_extensions):
     """ Checks whether the extension of the given file is in a list of file extensions.
 

@@ -204,7 +204,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         print('%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id))
 
         # Remember this file and all children
-        file_name = '%s.html' % utils.encode_url(page_title)
+        file_name = '%s.html' % utils.encode_url(utils.escape_slashes(page_title))
         path_collection = {'file_path': file_name, 'page_title': page_title, 'child_pages': [], 'child_attachments': []}
 
         # Download attachments of this page
