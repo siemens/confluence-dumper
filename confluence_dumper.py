@@ -4,6 +4,7 @@ import os
 import shutil
 
 from lxml import html
+from lxml.etree import XMLSyntaxError
 
 import utils
 import settings
@@ -33,13 +34,18 @@ def derive_downloaded_file_name(download_url):
         return None
 
 
-def handle_html_references(html_content):
+def handle_html_references(html_content, depth=0):
     """ Repairs links in the page contents with local links.
 
     :param html_content: Confluence HTML content.
     :returns: Fixed HTML content.
     """
-    html_tree = html.fromstring(html_content)
+    try:
+        html_tree = html.fromstring(html_content)
+    except XMLSyntaxError:
+        print '%sERROR: Could not parse HTML content of last page. Original content will be downloaded as it is.' \
+              % ('\t'*(depth+1))
+        return html_content
 
     # Fix links to other Confluence pages
     # Example: /display/TES/pictest1
@@ -199,7 +205,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                 page_url = None
 
         # Export HTML file
-        page_content = handle_html_references(page_content)
+        page_content = handle_html_references(page_content, depth=depth+1)
         file_path = '%s/%s' % (folder_path, file_name)
         page_content += create_html_attachment_index(path_collection['child_attachments'])
         utils.write_html_2_file(file_path, page_title, page_content, html_template)
