@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
 
+# confluence-dumper, a Python project to export spaces, pages and attachments
+#
+# Copyright (c) Siemens AG, 2016
+#
+# Authors:
+#   Thomas Maier <thomas.tm.maier@siemens.com>
+#
+# This work is licensed under the terms of the MIT license.
+# See the LICENSE.md file in the top-level directory.
+
 # Confluence URL
 CONFLUENCE_BASE_URL = 'http://192.168.240.188:8090'
 
