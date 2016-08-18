@@ -109,7 +109,8 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
         absolute_download_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
         utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
                                         headers=settings.HTTP_CUSTOM_HEADERS,
-                                        verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
+                                        verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                        proxies=settings.HTTP_PROXIES)
         print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
 
     return downloaded_file_path
@@ -174,7 +175,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                % (settings.CONFLUENCE_BASE_URL, page_id)
     try:
         response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
-                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
+                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                  proxies=settings.HTTP_PROXIES)
         page_content = response['body']['view']['value']
 
         page_title = response['title']
@@ -190,7 +192,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         counter = 0
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
-                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
+                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                      proxies=settings.HTTP_PROXIES)
             counter += len(response['results'])
             for attachment in response['results']:
                 download_url = attachment['_links']['download']
@@ -224,7 +227,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         counter = 0
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
-                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
+                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                      proxies=settings.HTTP_PROXIES)
             counter += len(response['results'])
             for child_page in response['results']:
                 paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template,
@@ -290,7 +294,8 @@ def main():
         try:
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
                                       headers=settings.HTTP_CUSTOM_HEADERS,
-                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE)
+                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                      proxies=settings.HTTP_PROXIES)
             space_name = response['name']
 
             print 'SPACE: %s (%s)' % (space_name, space)
