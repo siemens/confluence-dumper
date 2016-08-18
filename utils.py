@@ -91,6 +91,7 @@ def write_html_2_file(path, title, content, html_template, additional_headers=No
                     'additional_headers': additional_html_headers}
 
     for placeholder, replacement in replacements.iteritems():
+        print(replacement)
         regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'
         html_content = re.sub(regex_placeholder, replacement, html_content, flags=re.IGNORECASE)
 
