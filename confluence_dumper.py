@@ -22,6 +22,10 @@ import utils
 import settings
 
 
+CONFLUENCE_DUMPER_VERSION = '1.0.0'
+TITLE_OUTPUT = 'C O N F L U E N C E   D U M P E R  %s' % CONFLUENCE_DUMPER_VERSION
+
+
 def error_print(*args, **kwargs):
     """ Wrapper for the print function which leads to stderr outputs. """
     print(*args, file=sys.stderr, **kwargs)
@@ -286,6 +290,19 @@ def create_html_index(index_content):
     return html_content
 
 
+def print_welcome_output():
+    """ Displays software title and some license information """
+    print()
+    print('\t %s' % TITLE_OUTPUT)
+    print('\t %s\n' % ('='*len(TITLE_OUTPUT)))
+    print('... a Python project to export spaces, pages and attachments\n')
+    print('Copyright (c) Siemens AG, 2016\n')
+    print('Authors:')
+    print('  Thomas Maier <thomas.tm.maier@siemens.com>\n')
+    print('This work is licensed under the terms of the MIT license.')
+    print('See the LICENSE.md file in the top-level directory.\n')
+
+
 def main():
     """ Main function to start the confluence-dumper. """
     # Delete old export
@@ -296,6 +313,11 @@ def main():
     # Read HTML template
     template_file = open(settings.TEMPLATE_FILE)
     html_template = template_file.read()
+
+    # Welcome output
+    print_welcome_output()
+
+    print('Start export...')
 
     # Export spaces
     for space in settings.SPACES_TO_EXPORT:
