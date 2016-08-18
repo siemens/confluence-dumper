@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
+import sys
+
 import os
 import shutil
-
 from lxml import html
 from lxml.etree import XMLSyntaxError
 
 import utils
 import settings
+
+
+def error_print(*args, **kwargs):
+    """ Wrapper for the print function which leads to stderr outputs. """
+    print(*args, file=sys.stderr, **kwargs)
 
 
 def derive_downloaded_file_name(download_url):
@@ -43,8 +50,8 @@ def handle_html_references(html_content, depth=0):
     try:
         html_tree = html.fromstring(html_content)
     except XMLSyntaxError:
-        print '%sERROR: Could not parse HTML content of last page. Original content will be downloaded as it is.' \
-              % ('\t'*(depth+1))
+        error_print('%sERROR: Could not parse HTML content of last page. Original content will be downloaded as it'
+                    ' is.' % ('\t'*(depth+1)))
         return html_content
 
     # Fix links to other Confluence pages
@@ -111,7 +118,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
                                         headers=settings.HTTP_CUSTOM_HEADERS,
                                         verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
                                         proxies=settings.HTTP_PROXIES)
-        print '%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name)
+        print('%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name))
 
     return downloaded_file_path
 
@@ -180,7 +187,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         page_content = response['body']['view']['value']
 
         page_title = response['title']
-        print '%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id)
+        print('%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id))
 
         # Remember this file and all children
         file_name = '%s.html' % utils.encode_url(page_title)
@@ -244,7 +251,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         return path_collection
 
     except utils.ConfluenceException as e:
-        print '%sERROR: %s' % ('\t'*(depth+1), e)
+        error_print('%sERROR: %s' % ('\t'*(depth+1), e))
         return None
 
 
@@ -290,7 +297,7 @@ def main():
 
         space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
 
-        print
+        print()
         try:
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
                                       headers=settings.HTTP_CUSTOM_HEADERS,
@@ -298,7 +305,7 @@ def main():
                                       proxies=settings.HTTP_PROXIES)
             space_name = response['name']
 
-            print 'SPACE: %s (%s)' % (space_name, space)
+            print('SPACE: %s (%s)' % (space_name, space))
 
             space_page_id = response['homepage']['id']
             path_collection = fetch_page_recursively(space_page_id, space_folder, download_folder, html_template)
@@ -310,7 +317,7 @@ def main():
                 space_index_content = create_html_index(path_collection)
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
         except utils.ConfluenceException as e:
-            print 'ERROR: %s' % e
+            error_print('ERROR: %s' % e)
 
 
 if __name__ == "__main__":
