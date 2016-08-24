@@ -88,14 +88,13 @@ def write_html_2_file(path, title, content, html_template, additional_headers=No
 
     # Replace placeholders
     # Note: One backslash has to be escaped with two avoid that backslashes are interpreted as escape chars
-    replacements = {'title': title.replace('\\', '\\\\'),
-                    'content': content.replace('\\', '\\\\'),
-                    'additional_headers': additional_html_headers.replace('\\', '\\\\')}
+    replacements = {'title': title, 'content': content, 'additional_headers': additional_html_headers}
 
     for placeholder, replacement in replacements.iteritems():
         regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'
         try:
-            html_content = re.sub(regex_placeholder, replacement, html_content, flags=re.IGNORECASE)
+            html_content = re.sub(regex_placeholder, replacement.replace('\\', '\\\\'), html_content,
+                                  flags=re.IGNORECASE)
         except Exception as e:
             raise ConfluenceException('Error %s: Cannot replace placeholders in template file.' % e)
 
