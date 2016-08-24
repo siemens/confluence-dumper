@@ -58,7 +58,8 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None, v
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, downloaded_file)
     else:
-        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason, request_url))
+        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
+                                                                     request_url))
 
 
 def write_2_file(path, content):
@@ -86,14 +87,17 @@ def write_html_2_file(path, title, content, html_template, additional_headers=No
     additional_html_headers = '\n\t'.join(additional_headers) if additional_headers else ''
 
     # Replace placeholders
-    replacements = {'title': title,
-                    'content': content,
-                    'additional_headers': additional_html_headers}
+    # Note: One backslash has to be escaped with two avoid that backslashes are interpreted as escape chars
+    replacements = {'title': title.replace('\\', '\\\\'),
+                    'content': content.replace('\\', '\\\\'),
+                    'additional_headers': additional_html_headers.replace('\\', '\\\\')}
 
     for placeholder, replacement in replacements.iteritems():
-        print(replacement)
         regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'
-        html_content = re.sub(regex_placeholder, replacement, html_content, flags=re.IGNORECASE)
+        try:
+            html_content = re.sub(regex_placeholder, replacement, html_content, flags=re.IGNORECASE)
+        except Exception as e:
+            raise ConfluenceException('Error %s: Cannot replace placeholders in template file.' % e)
 
     write_2_file(path, html_content)
 
