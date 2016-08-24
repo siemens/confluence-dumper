@@ -319,8 +319,21 @@ def main():
 
     print('Start export...')
 
+    if len(settings.SPACES_TO_EXPORT) > 0:
+        spaces_to_export = settings.SPACES_TO_EXPORT
+    else:
+        response = utils.http_get('%s/rest/api/space' % settings.CONFLUENCE_BASE_URL, auth=settings.HTTP_AUTHENTICATION,
+                                  headers=settings.HTTP_CUSTOM_HEADERS,
+                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                  proxies=settings.HTTP_PROXIES)
+        spaces_to_export = []
+        for space in response['results']:
+            spaces_to_export.append(space['key'])
+
+    print('Exporting the following spaces: %s' % ', '.join(spaces_to_export))
+
     # Export spaces
-    for space in settings.SPACES_TO_EXPORT:
+    for space in spaces_to_export:
         # Create folders for this space
         space_folder = '%s/%s' % (settings.EXPORT_FOLDER, space)
         os.makedirs(space_folder)
