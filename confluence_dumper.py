@@ -64,7 +64,7 @@ def handle_html_references(html_content, depth=0):
     try:
         html_tree = html.fromstring(html_content)
     except XMLSyntaxError:
-        error_print('%sERROR: Could not parse HTML content of last page. Original content will be downloaded as it'
+        error_print('%sWARNING: Could not parse HTML content of last page. Original content will be downloaded as it'
                     ' is.' % ('\t'*(depth+1)))
         return html_content
 
