@@ -64,8 +64,8 @@ def handle_html_references(html_content, depth=0):
     try:
         html_tree = html.fromstring(html_content)
     except XMLSyntaxError:
-        error_print('%sWARNING: Could not parse HTML content of last page. Original content will be downloaded as it'
-                    ' is.' % ('\t'*(depth+1)))
+        print('%sWARNING: Could not parse HTML content of last page. Original content will be downloaded as it is.'
+              % ('\t'*(depth+1)))
         return html_content
 
     # Fix links to other Confluence pages
@@ -128,11 +128,15 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
     # Download file if it does not exist yet
     if not os.path.exists(downloaded_file_path):
         absolute_download_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
-        utils.http_download_binary_file(absolute_download_url, downloaded_file_path, auth=settings.HTTP_AUTHENTICATION,
-                                        headers=settings.HTTP_CUSTOM_HEADERS,
-                                        verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                        proxies=settings.HTTP_PROXIES)
         print('%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name))
+        try:
+            utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
+                                            auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                            verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                            proxies=settings.HTTP_PROXIES)
+
+        except utils.ConfluenceException as e:
+            error_print('%sERROR: %s' % ('\t'*(depth+2), e))
 
     return downloaded_file_path
 
