@@ -114,13 +114,14 @@ def handle_html_references(html_content, depth=0):
     return html.tostring(html_tree)
 
 
-def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
+def download_file(clean_url, download_folder, downloaded_file_name, depth=0, error_output=True):
     """ Downloads a specific file.
 
     :param clean_url: Decoded URL to the file.
     :param download_folder: Folder to place the downloaded file in.
     :param downloaded_file_name: File name to save the download to.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    :param error_output: (optional) Set to False if you do not want to see any error outputs
     :returns: Path to the downloaded file.
     """
     downloaded_file_path = '%s/%s' % (download_folder, downloaded_file_name)
@@ -136,7 +137,8 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0):
                                             proxies=settings.HTTP_PROXIES)
 
         except utils.ConfluenceException as e:
-            error_print('%sERROR: %s' % ('\t'*(depth+2), e))
+            if error_output:
+                error_print('%sERROR: %s' % ('\t'*(depth+2), e))
 
     return downloaded_file_path
 
@@ -159,13 +161,14 @@ def download_attachment(download_url, download_folder, attachment_id, depth=0):
     downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
     if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
         # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
-        download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth)
+        download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth,
+                      error_output=False)
 
     # Download the image preview as well if Confluence generated one for the attachment
     if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
         clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
         downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
-        download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth)
+        download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth, error_output=False)
 
     return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
 
