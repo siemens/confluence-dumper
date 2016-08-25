@@ -107,7 +107,7 @@ def decode_url(encoded_url):
     :param encoded_url: Encoded URL.
     :returns: Decoded URL.
     """
-    return urllib.unquote(encoded_url).decode('utf8')
+    return urllib.unquote(encoded_url.encode('utf8')).decode('utf8')
 
 
 def encode_url(decoded_url):
