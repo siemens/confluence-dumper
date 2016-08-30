@@ -12,6 +12,7 @@
 
 from __future__ import print_function
 import sys
+import codecs
 
 import os
 import shutil
@@ -312,6 +313,11 @@ def print_welcome_output():
 
 def main():
     """ Main function to start the confluence-dumper. """
+
+    # Configure console for unicode output via stdout/stderr
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr)
+
     # Delete old export
     if os.path.exists(settings.EXPORT_FOLDER):
         shutil.rmtree(settings.EXPORT_FOLDER)
