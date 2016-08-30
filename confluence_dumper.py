@@ -358,7 +358,7 @@ def main():
     # Export spaces
     for space in spaces_to_export:
         # Create folders for this space
-        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, space)
+        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, utils.encode_url(space))
         os.makedirs(space_folder)
         download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
         os.makedirs(download_folder)
