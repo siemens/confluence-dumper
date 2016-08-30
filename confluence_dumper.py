@@ -334,16 +334,24 @@ def main():
 
     print('Start export...')
 
+    # Fetch all spaces if spaces were not configured via settings
     if len(settings.SPACES_TO_EXPORT) > 0:
         spaces_to_export = settings.SPACES_TO_EXPORT
     else:
-        response = utils.http_get('%s/rest/api/space' % settings.CONFLUENCE_BASE_URL, auth=settings.HTTP_AUTHENTICATION,
-                                  headers=settings.HTTP_CUSTOM_HEADERS,
-                                  verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                  proxies=settings.HTTP_PROXIES)
         spaces_to_export = []
-        for space in response['results']:
-            spaces_to_export.append(space['key'])
+        page_url = '%s/rest/api/space?limit=25' % settings.CONFLUENCE_BASE_URL
+        while page_url:
+            response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                      proxies=settings.HTTP_PROXIES)
+            for space in response['results']:
+                spaces_to_export.append(space['key'])
+
+            if 'next' in response['_links'].keys():
+                page_url = response['_links']['next']
+                page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
+            else:
+                page_url = None
 
     print('Exporting the following spaces: %s' % ', '.join(spaces_to_export))
 
