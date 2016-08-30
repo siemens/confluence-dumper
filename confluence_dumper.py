@@ -140,6 +140,8 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0, err
         except utils.ConfluenceException as e:
             if error_output:
                 error_print('%sERROR: %s' % ('\t'*(depth+2), e))
+            else:
+                print('%sERROR: %s' % ('\t'*(depth+2), e))
 
     return downloaded_file_path
 
