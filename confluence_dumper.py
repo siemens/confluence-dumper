@@ -141,7 +141,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0, err
             if error_output:
                 error_print('%sERROR: %s' % ('\t'*(depth+2), e))
             else:
-                print('%sERROR: %s' % ('\t'*(depth+2), e))
+                print('%sWARNING: %s' % ('\t'*(depth+2), e))
 
     return downloaded_file_path
 
@@ -332,8 +332,6 @@ def main():
     # Welcome output
     print_welcome_output()
 
-    print('Start export...')
-
     # Fetch all spaces if spaces were not configured via settings
     if len(settings.SPACES_TO_EXPORT) > 0:
         spaces_to_export = settings.SPACES_TO_EXPORT
@@ -353,10 +351,13 @@ def main():
             else:
                 page_url = None
 
-    print('Exporting the following spaces: %s' % ', '.join(spaces_to_export))
+    print('Exporting %d spaces: %s' % (len(spaces_to_export), ', '.join(spaces_to_export)))
 
     # Export spaces
+    space_counter = 0
     for space in spaces_to_export:
+        space_counter += 1
+
         # Create folders for this space
         space_folder = '%s/%s' % (settings.EXPORT_FOLDER, utils.encode_url(space))
         os.makedirs(space_folder)
@@ -373,7 +374,7 @@ def main():
                                       proxies=settings.HTTP_PROXIES)
             space_name = response['name']
 
-            print('SPACE: %s (%s)' % (space_name, space))
+            print('SPACE (%d/%d): %s (%s)' % (space_counter, len(spaces_to_export), space_name, space))
 
             space_page_id = response['homepage']['id']
             path_collection = fetch_page_recursively(space_page_id, space_folder, download_folder, html_template)
@@ -391,5 +392,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+        print('Finished!')
     except KeyboardInterrupt:
+        error_print('ERROR: Keyboard Interrupt.')
         sys.exit(1)
