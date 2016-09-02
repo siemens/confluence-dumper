@@ -427,7 +427,7 @@ def main():
             if path_collection:
                 # Create index file for this space
                 space_index_path = '%s/index.html' % space_folder
-                space_index_title = 'Index of space %s (%s)' % (space_name, space)
+                space_index_title = 'Index of Space %s (%s)' % (space_name, space)
                 space_index_content = create_html_index(path_collection)
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
         except utils.ConfluenceException as e:
