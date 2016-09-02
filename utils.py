@@ -101,6 +101,16 @@ def write_html_2_file(path, title, content, html_template, additional_headers=No
     write_2_file(path, html_content)
 
 
+def sanitize_for_filename(original_string):
+    """ Sanitizes a string to use it as a filename on most filesystems.
+
+    :param original_string: Original string to sanitize
+    :returns: Sanitized string/filename
+    """
+    #return re.sub('[^\w_.)( -]', '_', original_string)
+    return re.sub('[\\\\/:*?\"<>|]', '_', original_string)
+
+
 def decode_url(encoded_url):
     """ Unquotes and decodes a given URL.
 
@@ -117,15 +127,6 @@ def encode_url(decoded_url):
     :returns: Encoded URL.
     """
     return urllib.quote(decoded_url.encode('utf8')).encode('utf8')
-
-
-def escape_slashes(unescaped_string):
-    """ Escapes slashes to avoid file path injection
-
-    :param unescaped_string: String to escape
-    :returns: Escaped string
-    """
-    return unescaped_string.replace('/', 'SLASH')
 
 
 def is_file_format(file_name, file_extensions):

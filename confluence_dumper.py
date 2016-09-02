@@ -10,6 +10,10 @@
 # This work is licensed under the terms of the MIT license.
 # See the LICENSE.md file in the top-level directory.
 
+"""
+Confluence-dumper is a Python project to export spaces, pages and attachments
+"""
+
 from __future__ import print_function
 import sys
 import codecs
@@ -28,7 +32,11 @@ TITLE_OUTPUT = 'C O N F L U E N C E   D U M P E R  %s' % CONFLUENCE_DUMPER_VERSI
 
 
 def error_print(*args, **kwargs):
-    """ Wrapper for the print function which leads to stderr outputs. """
+    """ Wrapper for the print function which leads to stderr outputs.
+
+    :param args: Not necessary.
+    :param kwargs: Not necessary.
+    """
     print(*args, file=sys.stderr, **kwargs)
 
 
@@ -56,10 +64,34 @@ def derive_downloaded_file_name(download_url):
         return None
 
 
-def handle_html_references(html_content, depth=0):
+def provide_unique_file_name(duplicate_file_names, page_file_matching, page_title):
+    """ Provides an unique AND sanitized file name for a given page title. Confluence does not allow the same page title
+    in one particular space but collisions are possible after filesystem sanitization.
+
+    :param duplicate_file_names: A dict in the structure {'<sanitized filename>': amount of duplicates}
+    :param page_file_matching: A dict in the structure {'<page title>': '<used offline filename>'}
+    :param page_title: Page title which is used to generate the unique file name
+    """
+    if page_title in page_file_matching:
+        file_name = page_file_matching[page_title]
+    else:
+        file_name = utils.sanitize_for_filename(page_title)
+        if file_name in duplicate_file_names:
+            duplicate_file_names[file_name] += 1
+        else:
+            duplicate_file_names[file_name] = 0
+        file_name = '%s-%d.html' % (file_name, duplicate_file_names[file_name])
+        page_file_matching[page_title] = file_name
+    return file_name
+
+
+def handle_html_references(html_content, duplicate_file_names, page_file_matching, depth=0):
     """ Repairs links in the page contents with local links.
 
     :param html_content: Confluence HTML content.
+    :param duplicate_file_names: A dict in the structure {'<sanitized filename>': amount of duplicates}
+    :param page_file_matching: A dict in the structure {'<page title>': '<used offline filename>'}
+    :param depth: (optional) Hierarchy depth of the handled Confluence page.
     :returns: Fixed HTML content.
     """
     try:
@@ -78,14 +110,16 @@ def handle_html_references(html_content, depth=0):
         if not link_element.get('class'):
             page_title = link_element.attrib['href'].split('/')[3]
             page_title = page_title.replace('+', ' ')
-            link_element.attrib['href'] = '%s.html' % utils.encode_url(page_title)
+            decoded_page_title = utils.decode_url(page_title)
+            link_element.attrib['href'] = provide_unique_file_name(duplicate_file_names, page_file_matching,
+                                                                   decoded_page_title)
 
     # Fix links to other Confluence pages when page ids are used
     xpath_expr = '//a[starts-with(@href, "/pages/viewpage.action?pageId=")]'
     for link_element in html_tree.xpath(xpath_expr):
         if not link_element.get('class'):
             page_id = link_element.attrib['href'].split('/pages/viewpage.action?pageId=')[1]
-            link_element.attrib['href'] = '%s.html' % utils.encode_url(page_id)
+            link_element.attrib['href'] = '%s.html' % utils.sanitize_for_filename(page_id)
 
     # Fix attachment links
     xpath_expr = '//a[contains(@class, "confluence-embedded-file")]'
@@ -192,7 +226,8 @@ def create_html_attachment_index(attachments):
     return html_content
 
 
-def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0):
+def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0, duplicate_file_names=None,
+                           page_file_matching=None):
     """ Fetches a Confluence page and its child pages (with referenced downloads).
 
     :param page_id: Confluence page id.
@@ -200,8 +235,15 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     :param download_folder: Folder to place downloaded files in.
     :param html_template: HTML template used to export Confluence pages.
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
+    :param duplicate_file_names: A dict in the structure {'<sanitized filename>': amount of duplicates}
+    :param page_file_matching: A dict in the structure {'<page title>': '<used offline filename>'}
     :returns: Information about downloaded files (pages, attachments, images, ...) as a dict (None for exceptions)
     """
+    if not duplicate_file_names:
+        duplicate_file_names = {}
+    if not page_file_matching:
+        page_file_matching = {}
+
     page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
     try:
@@ -213,8 +255,10 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         page_title = response['title']
         print('%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id))
 
+        # Construct unique file name
+        file_name = provide_unique_file_name(duplicate_file_names, page_file_matching, page_title)
+
         # Remember this file and all children
-        file_name = '%s.html' % utils.encode_url(utils.escape_slashes(page_title))
         path_collection = {'file_path': file_name, 'page_title': page_title, 'child_pages': [], 'child_attachments': []}
 
         # Download attachments of this page
@@ -239,7 +283,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                 page_url = None
 
         # Export HTML file
-        page_content = handle_html_references(page_content, depth=depth+1)
+        page_content = handle_html_references(page_content, duplicate_file_names, page_file_matching, depth=depth+1)
         file_path = '%s/%s' % (folder_path, file_name)
         page_content += create_html_attachment_index(path_collection['child_attachments'])
         utils.write_html_2_file(file_path, page_title, page_content, html_template)
@@ -247,7 +291,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         # Save another file with page id which forwards to the original one
         id_file_path = '%s/%s.html' % (folder_path, page_id)
         id_file_page_title = 'Forward to page %s' % page_title
-        original_file_link = utils.encode_url(file_name)
+        original_file_link = utils.sanitize_for_filename(file_name)
         id_file_page_content = settings.HTML_FORWARD_MESSAGE % (original_file_link, page_title)
         id_file_forward_header = '<meta http-equiv="refresh" content="0; url=%s" />' % original_file_link
         utils.write_html_2_file(id_file_path, id_file_page_title, id_file_page_content, html_template,
@@ -263,7 +307,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
             counter += len(response['results'])
             for child_page in response['results']:
                 paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template,
-                                               depth=depth+1)
+                                               depth=depth+1, duplicate_file_names=duplicate_file_names,
+                                               page_file_matching=page_file_matching)
                 if paths:
                     path_collection['child_pages'].append(paths)
 
@@ -289,7 +334,7 @@ def create_html_index(index_content):
     page_title = index_content['page_title']
     page_children = index_content['child_pages']
 
-    html_content = '<a href="%s">%s</a>' % (utils.encode_url(file_path), page_title)
+    html_content = '<a href="%s">%s</a>' % (utils.sanitize_for_filename(file_path), page_title)
 
     if len(page_children) > 0:
         html_content += '<ul>\n'
@@ -351,7 +396,7 @@ def main():
             else:
                 page_url = None
 
-    print('Exporting %d spaces: %s' % (len(spaces_to_export), ', '.join(spaces_to_export)))
+    print('Exporting %d space(s): %s' % (len(spaces_to_export), ', '.join(spaces_to_export)))
 
     # Export spaces
     space_counter = 0
@@ -359,7 +404,7 @@ def main():
         space_counter += 1
 
         # Create folders for this space
-        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, utils.encode_url(space))
+        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, utils.sanitize_for_filename(space))
         os.makedirs(space_folder)
         download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
         os.makedirs(download_folder)
