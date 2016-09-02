@@ -220,8 +220,8 @@ def create_html_attachment_index(attachments):
     if len(attachments) > 0:
         html_content += '<ul>\n'
         for attachment in attachments:
-            html_content += '\t<li><a href="../../%s">%s</a></li>\n' % (attachment['file_path'],
-                                                                        attachment['file_name'])
+            relative_file_path = '/'.join(attachment['file_path'].split('/')[2:])
+            html_content += '\t<li><a href="%s">%s</a></li>\n' % (relative_file_path, attachment['file_name'])
         html_content += '</ul>\n'
     return html_content
 
