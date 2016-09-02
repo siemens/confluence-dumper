@@ -78,9 +78,10 @@ def provide_unique_file_name(duplicate_file_names, page_file_matching, page_titl
         file_name = utils.sanitize_for_filename(page_title)
         if file_name in duplicate_file_names:
             duplicate_file_names[file_name] += 1
+            file_name = '%s_%d.html' % (file_name, duplicate_file_names[file_name])
         else:
             duplicate_file_names[file_name] = 0
-        file_name = '%s-%d.html' % (file_name, duplicate_file_names[file_name])
+            file_name = '%s.html' % file_name
         page_file_matching[page_title] = file_name
     return file_name
 
