@@ -17,6 +17,7 @@ import urllib
 
 
 class ConfluenceException(Exception):
+    """ Exception for Confluence export issues """
     def __init__(self, message):
         super(ConfluenceException, self).__init__(message)
 
@@ -36,7 +37,8 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True,
     if 200 == response.status_code:
         return response.json()
     else:
-        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason, request_url))
+        raise ConfluenceException('Error %s: %s on requesting %s' % (response.status_code, response.reason,
+                                                                     request_url))
 
 
 def http_download_binary_file(request_url, file_path, auth=None, headers=None, verify_peer_certificate=True,
@@ -107,8 +109,8 @@ def sanitize_for_filename(original_string):
     :param original_string: Original string to sanitize
     :returns: Sanitized string/filename
     """
-    #return re.sub('[^\w_.)( -]', '_', original_string)
-    return re.sub('[\\\\/:*?\"<>|]', '_', original_string)
+    sanitized_file_name = re.sub('[\\\\/:*?\"<>|]', '_', original_string)
+    return sanitized_file_name
 
 
 def decode_url(encoded_url):
