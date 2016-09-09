@@ -68,30 +68,39 @@ def derive_downloaded_file_name(download_url):
         return None
 
 
-def provide_unique_file_name(duplicate_file_names, file_matching, file_title, explicit_file_extension=None):
+def provide_unique_file_name(duplicate_file_names, file_matching, file_title, is_folder=False,
+                             explicit_file_extension=None):
     """ Provides an unique AND sanitized file name for a given page title. Confluence does not allow the same page title
     in one particular space but collisions are possible after filesystem sanitization.
 
     :param duplicate_file_names: A dict in the structure {'<sanitized filename>': amount of duplicates}
     :param file_matching: A dict in the structure {'<file title>': '<used offline filename>'}
     :param file_title: File title which is used to generate the unique file name
+    :param is_folder: (optional) Flag which states whether the file is a folder
     :param explicit_file_extension: (optional) Explicitly set file extension (e.g. 'html')
     """
     if file_title in file_matching:
         file_name = file_matching[file_title]
     else:
         file_name = utils.sanitize_for_filename(file_title)
-        if explicit_file_extension:
+
+        if is_folder:
+            file_extension = None
+        elif explicit_file_extension:
             file_extension = explicit_file_extension
         else:
             file_name, file_extension = file_name.rsplit('.', 1)
+
         if file_name in duplicate_file_names:
             duplicate_file_names[file_name] += 1
             file_name = '%s_%d' % (file_name, duplicate_file_names[file_name])
         else:
             duplicate_file_names[file_name] = 0
             file_name = file_name
-        file_name += '.%s' % file_extension
+
+        if file_extension:
+            file_name += '.%s' % file_extension
+
         file_matching[file_title] = file_name
     return file_name
 
@@ -437,23 +446,24 @@ def main():
             else:
                 page_url = None
 
-    print('Exporting %d space(s): %s' % (len(spaces_to_export), ', '.join(spaces_to_export)))
+    print('Exporting %d space(s): %s\n' % (len(spaces_to_export), ', '.join(spaces_to_export)))
 
     # Export spaces
     space_counter = 0
+    duplicate_space_names = {}
+    space_matching = {}
     for space in spaces_to_export:
         space_counter += 1
 
         # Create folders for this space
-        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, utils.sanitize_for_filename(space))
-        os.makedirs(space_folder)
-        download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
-        os.makedirs(download_folder)
-
-        space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
-
-        print()
+        space_folder_name = provide_unique_file_name(duplicate_space_names, space_matching, space, is_folder=True)
+        space_folder = '%s/%s' % (settings.EXPORT_FOLDER, space_folder_name)
         try:
+            os.makedirs(space_folder)
+            download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
+            os.makedirs(download_folder)
+
+            space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
                                       headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
@@ -473,6 +483,9 @@ def main():
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
         except utils.ConfluenceException as e:
             error_print('ERROR: %s' % e)
+        except OSError:
+            print('WARNING: The space %s has been exported already. Maybe you mentioned it twice in the settings'
+                  % space)
 
     # Finished output
     print_finished_output()
