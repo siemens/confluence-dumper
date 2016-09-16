@@ -89,7 +89,10 @@ def provide_unique_file_name(duplicate_file_names, file_matching, file_title, is
         elif explicit_file_extension:
             file_extension = explicit_file_extension
         else:
-            file_name, file_extension = file_name.rsplit('.', 1)
+            if '.' in file_name:
+                file_name, file_extension = file_name.rsplit('.', 1)
+            else:
+                file_extension = None
 
         if file_name in duplicate_file_names:
             duplicate_file_names[file_name] += 1
