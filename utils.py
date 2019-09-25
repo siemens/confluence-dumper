@@ -73,9 +73,11 @@ def write_2_file(path, content):
     :param path: Local file path.
     :param content: String content to persist.
     """
-    with open(path, 'w') as the_file:
-        the_file.write(content.encode('utf8'))
-
+    try:
+        with open(path, 'w') as the_file:
+            the_file.write(content.encode('utf8'))
+    except:
+        print("File could not be written")
 
 def write_html_2_file(path, title, content, html_template, additional_headers=None):
     """ Writes HTML content to a file using a template.
