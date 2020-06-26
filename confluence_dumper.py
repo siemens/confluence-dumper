@@ -117,6 +117,8 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
     :param depth: (optional) Hierarchy depth of the handled Confluence page.
     :returns: Fixed HTML content.
     """
+    if html_content == "":
+        return ""
     try:
         html_tree = html.fromstring(html_content)
     except XMLSyntaxError:
@@ -131,7 +133,12 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
     xpath_expr = '//a[contains(@href, "/display/")]'
     for link_element in html_tree.xpath(xpath_expr):
         if not link_element.get('class'):
-            page_title = link_element.attrib['href'].split('/')[3]
+            print("LINK - "+link_element.attrib['href'])
+            try:
+                page_title = link_element.attrib['href'].split('/')[4]
+            except:
+                page_title = link_element.attrib['href'].split('/')[3]
+
             page_title = page_title.replace('+', ' ')
             decoded_page_title = utils.decode_url(page_title)
             offline_link = provide_unique_file_name(page_duplicate_file_names, page_file_matching, decoded_page_title,
@@ -415,12 +422,11 @@ def main():
     """ Main function to start the confluence-dumper. """
 
     # Configure console for unicode output via stdout/stderr
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr)
+    #sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
+    #sys.stderr = codecs.getwriter('utf-8')(sys.stderr)
 
     # Welcome output
     print_welcome_output()
-
     # Delete old export
     if os.path.exists(settings.EXPORT_FOLDER):
         shutil.rmtree(settings.EXPORT_FOLDER)
@@ -475,7 +481,11 @@ def main():
 
             print('SPACE (%d/%d): %s (%s)' % (space_counter, len(spaces_to_export), space_name, space))
 
-            space_page_id = response['homepage']['id']
+            if "homepage" in response.keys():
+                space_page_id = response['homepage']['id']
+            else:
+                space_page_id = -1
+
             path_collection = fetch_page_recursively(space_page_id, space_folder, download_folder, html_template)
 
             if path_collection:
