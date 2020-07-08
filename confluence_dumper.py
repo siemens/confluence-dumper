@@ -6,6 +6,7 @@
 #
 # Authors:
 #   Thomas Maier <thomas.tm.maier@siemens.com>
+#   Alpako
 #
 # This work is licensed under the terms of the MIT license.
 # See the LICENSE.md file in the top-level directory.
@@ -26,7 +27,7 @@ import utils
 import settings
 
 
-CONFLUENCE_DUMPER_VERSION = '1.0.0'
+CONFLUENCE_DUMPER_VERSION = '1.1.0-python3'
 TITLE_OUTPUT = 'C O N F L U E N C E   D U M P E R  %s' % CONFLUENCE_DUMPER_VERSION
 
 
