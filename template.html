@@ -1,12 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{% TITLE %}</title>
+    <title>{{ title }}</title>
     <meta charset="UTF-8">
-    {% ADDITIONAL_HEADERS %}
+    {{ additional_headers }}
 </head>
 <body>
-<h1>{% TITLE %}</h1>
-{% CONTENT %}
+<h1>{%if spaceName%}{{spaceName}} ({{spaceKey}}){%endif%}: {{ title }} </h1>
+{%if created%}
+<div style="font-size:70%; color:#444; font-style: italic">
+<p>Created: {{created}} </p>
+<p>Last Updated: {{lastUpdated}}</p>
+</div>
+{%endif%}
+
+{{ content | safe }}
+
 </body>
 </html>

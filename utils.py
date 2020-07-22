@@ -14,6 +14,8 @@ import requests
 import shutil
 import re
 import urllib.parse
+from jinja2 import Environment, FileSystemLoader, select_autoescape, meta
+from pprint import pprint
 
 
 class ConfluenceException(Exception):
@@ -70,35 +72,55 @@ def write_2_file(path, content):
     :param path: Local file path.
     :param content: String content to persist.
     """
+    path=re.sub(r' ','+',path)
     with open(path, 'w', encoding='utf8') as the_file:
         the_file.write(content)
 
 
-def write_html_2_file(path, title, content, html_template, additional_headers=None):
+def write_html_2_file(path, title, content, html_template, additional_headers=None, replacements={}):
     """ Writes HTML content to a file using a template.
 
     :param path: Local file path
     :param title: page title
     :param content: page content
-    :param html_template: page template; supported placeholders: ``{% title %}``, ``{% content %}``
+    :param html_template: not used, really
     :param additional_headers: (optional) Additional HTML headers.
+    :param extra_replacements: more tags to replace in a dict
     """
-    html_content = html_template
+    
 
+    env = Environment(
+        loader=FileSystemLoader('.')
+    )
+    template = env.get_template('template.html')
+    
+
+
+    def tojson(s):                                       
+        import json
+        return json.dumps(s)
+    env.filters['tojson'] = tojson
     # Build additional HTML headers
     additional_html_headers = '\n\t'.join(additional_headers) if additional_headers else ''
 
     # Replace placeholders
     # Note: One backslash has to be escaped with two avoid that backslashes are interpreted as escape chars
-    replacements = {'title': title, 'content': content, 'additional_headers': additional_html_headers}
+    replacements['title'] = title
+    replacements['content'] = content
+    replacements['additional_headers'] = additional_html_headers
+    
+    
+    #pprint(replacements)
+    html_content = template.render(context=replacements, **replacements)
+    # for placeholder, replacement in replacements.items():
+    #     print(placeholder)
+    #     regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'
+    #     try:
+    #         html_content = re.sub(regex_placeholder, replacement.replace('\\', '\\\\'), html_content,
+    #                               flags=re.IGNORECASE)
+    #     except Exception as e:
+    #         raise ConfluenceException('Error %s: Cannot replace placeholders in template file.' % e)
 
-    for placeholder, replacement in replacements.items():
-        regex_placeholder = r'{%\s*' + placeholder + r'\s*%\}'
-        try:
-            html_content = re.sub(regex_placeholder, replacement.replace('\\', '\\\\'), html_content,
-                                  flags=re.IGNORECASE)
-        except Exception as e:
-            raise ConfluenceException('Error %s: Cannot replace placeholders in template file.' % e)
 
     write_2_file(path, html_content)
 
