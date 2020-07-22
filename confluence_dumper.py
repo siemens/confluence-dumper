@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # confluence-dumper, a Python project to export spaces, pages and attachments
@@ -7,6 +8,7 @@
 # Authors:
 #   Thomas Maier <thomas.tm.maier@siemens.com>
 #   Alpako
+#   Brian Ballsun-Stanton <brian.ballsun-stanton@mq.edu.au>
 #
 # This work is licensed under the terms of the MIT license.
 # See the LICENSE.md file in the top-level directory.
@@ -25,9 +27,11 @@ from lxml.etree import XMLSyntaxError
 
 import utils
 import settings
+import datetime
+from pprint import pprint
+import re
 
-
-CONFLUENCE_DUMPER_VERSION = '1.1.0-python3'
+CONFLUENCE_DUMPER_VERSION = '1.1.1-python3'
 TITLE_OUTPUT = 'C O N F L U E N C E   D U M P E R  %s' % CONFLUENCE_DUMPER_VERSION
 
 
@@ -146,6 +150,23 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
                 link_element.attrib['href'] = utils.encode_url(offline_link)
 
 
+    xpath_expr = '//a[contains(@href, "/wiki/spaces/")]'
+    for link_element in html_tree.xpath(xpath_expr):
+        link_element_url = link_element.attrib['href']
+        #pprint(link_element.attrib)
+        link_element.attrib['href'] = re.sub(r'/wiki/spaces/([^/]*)/([^/]*)/([^/]*)/([^?]*)+?.*', r'../\1/\4.html', link_element.attrib['href'])
+        #pprint(link_element.attrib)
+          
+
+            # if len(link_element.attrib['href'].split('/')) > 3:
+            #     page_title = link_element.attrib['href'].split('/')[3]
+            #     page_title = page_title.replace('+', ' ')
+            #     decoded_page_title = utils.decode_url(page_title)
+            #     offline_link = provide_unique_file_name(page_duplicate_file_names, page_file_matching,
+            #                                             decoded_page_title,
+            #                                             explicit_file_extension='html')
+            #     link_element.attrib['href'] = utils.encode_url(offline_link)
+
     # Fix links to other Confluence pages when page ids are used
     xpath_expr = '//a[contains(@href, "/pages/viewpage.action?pageId=")]'
     for link_element in html_tree.xpath(xpath_expr):
@@ -155,29 +176,39 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
             link_element.attrib['href'] = utils.encode_url(offline_link)
 
     # Fix attachment links
-    xpath_expr = '//a[contains(@class, "confluence-embedded-file")]'
+    xpath_expr = '//a[contains(@data-linked-resource-type, "attachment")]'
     for link_element in html_tree.xpath(xpath_expr):
+        #pprint(link_element.attrib)
         file_url = link_element.attrib['href']
-        file_name = derive_downloaded_file_name(file_url)
+        file_name = re.sub(r'/wiki/download/([^/]*)/([^/]*)/([^?]*).*', r'\2_\1_\3', link_element.attrib['href'])
+        #file_name = derive_downloaded_file_name(file_url)
         relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, file_name)
         link_element.attrib['href'] = relative_file_path
+        #pprint(link_element.attrib)
 
     # Fix file paths for img tags
     # TODO: Handle non-<img> tags as well if necessary.
     # TODO: Support files with different versions as well if necessary.
     possible_image_xpaths = ['//img[contains(@src, "/download/")]',
-                             '//img[contains(@src, "/rest/documentConversion/latest/conversion/thumbnail/")]']
+                             '//img[contains(@src, "/thumbnails/")]']
     xpath_expr = '|'.join(possible_image_xpaths)
     for img_element in html_tree.xpath(xpath_expr):
         # Replace file path
+        #pprint(img_element.attrib)
         file_url = img_element.attrib['src']
-        file_name = derive_downloaded_file_name(file_url)
+        file_name = re.sub(r'.*/wiki/download/([^/]*)/([^/]*)/([^?]*).*', r'\2_\1_\3', img_element.attrib['src'])
+
+        #file_name = derive_downloaded_file_name(file_url)
         relative_file_path = '%s/%s' % (settings.DOWNLOAD_SUB_FOLDER, file_name)
         img_element.attrib['src'] = relative_file_path
-
+        img_element.attrib['data-image-src'] = relative_file_path
+        if "srcset " in img_element.attrib:
+            del img_element.attrib['srcset']
+        #pprint(img_element.attrib)
         # Add alt attribute if it does not exist yet
         if not 'alt' in img_element.attrib.keys():
             img_element.attrib['alt'] = relative_file_path
+
 
     return html.tostring(html_tree)
 
@@ -272,7 +303,7 @@ def create_html_attachment_index(attachments):
 
 def fetch_page_recursively(page_id, folder_path, download_folder, html_template, depth=0,
                            page_duplicate_file_names=None, page_file_matching=None,
-                           attachment_duplicate_file_names=None, attachment_file_matching=None):
+                           attachment_duplicate_file_names=None, attachment_file_matching=None, space_name=None, space_key=None):
     """ Fetches a Confluence page and its child pages (with referenced downloads).
 
     :param page_id: Confluence page id.
@@ -296,7 +327,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     if not attachment_file_matching:
         attachment_file_matching = {}
 
-    page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value' \
+    page_url = '%s/rest/api/content/%s?expand=children.page,children.attachment,body.view.value,children.comment,history.lastUpdated' \
                % (settings.CONFLUENCE_BASE_URL, page_id)
     try:
         response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
@@ -306,11 +337,22 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
 
         page_title = response['title']
         print('%sPAGE: %s (%s)' % ('\t' * (depth + 1), page_title, page_id))
-
+        history =response['history']
+        created = "{} ({}) - {}".format(history['createdBy'].get('displayName','None'), history['createdBy'].get('email','None'), history['createdDate'])
+        lastUpdated = "{} ({}) - {}".format(history['lastUpdated']['by'].get('displayName','None'), history['lastUpdated']['by'].get('email','None'), history['lastUpdated']['when'])
         # Construct unique file name
         file_name = provide_unique_file_name(page_duplicate_file_names, page_file_matching, page_title,
                                              explicit_file_extension='html')
 
+
+        # Get page as PDF
+        # if settings.EXPORT_PDF_OF_EACH_PAGE:
+        #     #https://faimsproject.atlassian.net/wiki/spaces/flyingpdf/pdfpageexport.action?pageId=72581122
+        #     pdf_getter = "{}/spaces/flyingpdf/pdfpageexport.action?pageId={}".format(settings.CONFLUENCE_BASE_URL, page_id)
+        #     pdf_response = utils.http_get(pdf_getter, auth=settings.HTTP_AUTHENTICATION, headers={"Content-Type": "application/json"},
+        #                           verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+        #                           proxies=settings.HTTP_PROXIES)
+        #     pprint(pdf_response)
         # Remember this file and all children
         path_collection = {'file_path': file_name, 'page_title': page_title, 'child_pages': [], 'child_attachments': []}
 
@@ -323,6 +365,9 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
                                       proxies=settings.HTTP_PROXIES)
             counter += len(response['results'])
+
+            
+
             for attachment in response['results']:
                 download_url = attachment['_links']['download']
                 attachment_id = attachment['id'][3:]
@@ -342,7 +387,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                                               depth=depth + 1)
         file_path = '%s/%s' % (folder_path, file_name)
         page_content += create_html_attachment_index(path_collection['child_attachments'])
-        utils.write_html_2_file(file_path, page_title, page_content.decode('utf8'), html_template)
+        utils.write_html_2_file(file_path, page_title, page_content.decode('utf8'), html_template, replacements={'created':created, 'lastUpdated':lastUpdated, 'spaceName':space_name, 'spaceKey':space_key})
 
         # Save another file with page id which forwards to the original one
         id_file_path = '%s/%s.html' % (folder_path, page_id)
@@ -351,7 +396,8 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         id_file_page_content = settings.HTML_FORWARD_MESSAGE % (original_file_link, page_title)
         id_file_forward_header = '<meta http-equiv="refresh" content="0; url=%s" />' % original_file_link
         utils.write_html_2_file(id_file_path, id_file_page_title, id_file_page_content, html_template,
-                                additional_headers=[id_file_forward_header])
+                                additional_headers=[id_file_forward_header], replacements={'created':created, 'lastUpdated':lastUpdated, 'spaceName':space_name, 'spaceKey':space_key}
+                                )
 
         # Iterate through all child pages
         page_url = '%s/rest/api/content/%s/child/page' % (settings.CONFLUENCE_BASE_URL, page_id)
@@ -364,7 +410,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
             for child_page in response['results']:
                 paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template,
                                                depth=depth + 1, page_duplicate_file_names=page_duplicate_file_names,
-                                               page_file_matching=page_file_matching)
+                                               page_file_matching=page_file_matching, space_name=space_name, space_key=space_key)
                 if paths:
                     path_collection['child_pages'].append(paths)
 
@@ -389,6 +435,8 @@ def create_html_index(index_content):
     file_path = utils.encode_url(index_content['file_path'])
     page_title = index_content['page_title']
     page_children = index_content['child_pages']
+    
+    
 
     html_content = '<a href="%s">%s</a>' % (utils.sanitize_for_filename(file_path), page_title)
 
@@ -403,14 +451,20 @@ def create_html_index(index_content):
 
 def print_welcome_output():
     """ Displays software title and some license information """
-    print('\n\t %s' % TITLE_OUTPUT)
-    print('\t %s\n' % ('=' * len(TITLE_OUTPUT)))
-    print('... a Python project to export spaces, pages and attachments\n')
-    print('Copyright (c) Siemens AG, 2016\n')
-    print('Authors:')
-    print('  Thomas Maier <thomas.tm.maier@siemens.com>\n')
-    print('This work is licensed under the terms of the MIT license.')
-    print('See the LICENSE.md file in the top-level directory.\n\n')
+    print("""
+{}
+... a Python project to export spaces, pages and attachments
+Copyright (c) Siemens AG, 2016, Alpako, Macquarie University
+
+Authors:
+    Thomas Maier <thomas.tm.maier@siemens.com>
+    Alpako
+    Brian Ballsun-Stanton <brian.ballsun-stanton@mq.edu.au>
+
+This work is licensed under the terms of the MIT license.
+
+See the LICENSE.md file in the top-level directory.
+          """.format(TITLE_OUTPUT))
 
 
 def print_finished_output():
@@ -434,25 +488,45 @@ def main():
     html_template = template_file.read()
 
     # Fetch all spaces if spaces were not configured via settings
-    if len(settings.SPACES_TO_EXPORT) > 0:
-        spaces_to_export = settings.SPACES_TO_EXPORT
-    else:
-        spaces_to_export = []
-        page_url = '%s/rest/api/space?limit=25' % settings.CONFLUENCE_BASE_URL
-        while page_url:
-            response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
-                                      verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
-            for space in response['results']:
-                spaces_to_export.append(space['key'])
+    # if len(settings.SPACES_TO_EXPORT) > 0:
+    #     spaces_to_export = settings.SPACES_TO_EXPORT
 
-            if 'next' in response['_links'].keys():
-                page_url = response['_links']['next']
-                page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
-            else:
-                page_url = None
+        
+    # else:
+    spaces_to_export = []
+    spaces_to_index = {}
+    page_url = '%s/rest/api/space?limit=25' % settings.CONFLUENCE_BASE_URL
+    while page_url:
+        response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
+                                    verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
+                                    proxies=settings.HTTP_PROXIES)
+        for space in response['results']:
+            #pprint(space)
+            if not settings.SPACES_TO_EXPORT or space['key'] in settings.SPACES_TO_EXPORT:
+                spaces_to_export.append(space['key'])
+                spaces_to_index[space['key']] = "{} - {}".format(space['name'], space['status'])
+
+        if 'next' in response['_links'].keys():
+            page_url = response['_links']['next']
+            page_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, page_url)
+        else:
+            page_url = None
 
     print('Exporting %d space(s): %s\n' % (len(spaces_to_export), ', '.join(spaces_to_export)))
+    if settings.MAKE_SPACE_INDEX:
+        metadata = {'url':settings.CONFLUENCE_BASE_URL, 'date':datetime.datetime.now()}
+        with open("{}/index.html".format(settings.EXPORT_FOLDER), "w") as write_index:
+            write_index.write("""
+<html>
+<head><title>Confluence Export - {url} - {date}</title><head>
+<body>
+<h1>Confluence Export - {url} - {date}</h1>
+<ul>
+""".format(**metadata))
+            for space in spaces_to_index:
+                write_index.write("<li><a href='{}/index.html'>({}) {}</a></li>".format(space, space, spaces_to_index[space]))
+            write_index.write("""</ul></body></html>
+                              """)
 
     # Export spaces
     space_counter = 0
@@ -468,6 +542,8 @@ def main():
             os.makedirs(space_folder)
             download_folder = '%s/%s' % (space_folder, settings.DOWNLOAD_SUB_FOLDER)
             os.makedirs(download_folder)
+            if settings.EXPORT_PDF_OF_EACH_PAGE:
+                os.makedirs('%s/%s' % (space_folder, settings.EXPORT_PDF_OF_EACH_PAGE))        
 
             space_url = '%s/rest/api/space/%s?expand=homepage' % (settings.CONFLUENCE_BASE_URL, space)
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
@@ -478,15 +554,25 @@ def main():
 
             print('SPACE (%d/%d): %s (%s)' % (space_counter, len(spaces_to_export), space_name, space))
 
-            space_page_id = response['homepage']['id']
-            path_collection = fetch_page_recursively(space_page_id, space_folder, download_folder, html_template)
+            try:
+                space_page_id = response['homepage']['id']
+            except KeyError:
+                print("No homepage found, continuing with next space.")
+                continue
 
+            path_collection = fetch_page_recursively(space_page_id, space_folder, download_folder, html_template, space_name=space_name, space_key=space)
+            if settings.MAKE_SPACE_INDEX:
+                index_html_content = "<p><a href='../index.html'>Back to main index</a></p><h2>Space listing:</h2>"
+            else:
+                index_html_content = "<h2>Space listing:</h2>"
             if path_collection:
                 # Create index file for this space
                 space_index_path = '%s/index.html' % space_folder
-                space_index_title = 'Index of Space %s (%s)' % (space_name, space)
-                space_index_content = create_html_index(path_collection)
+
+                space_index_title = """Index of Space %s (%s)""" % (space_name, space)
+                space_index_content = "{}\n{}".format(index_html_content, create_html_index(path_collection))
                 utils.write_html_2_file(space_index_path, space_index_title, space_index_content, html_template)
+                
         except utils.ConfluenceException as e:
             error_print('ERROR: %s' % e)
         except OSError:
