@@ -23,6 +23,11 @@ import shutil
 from lxml import html
 from lxml.etree import XMLSyntaxError
 
+# if sys.stdout.encoding != 'cp850':
+#       sys.stdout = codecs.getwriter('cp850')(sys.stdout, 'strict')
+# if sys.stderr.encoding != 'cp850':
+#   sys.stderr = codecs.getwriter('cp850')(sys.stderr, 'strict')
+
 import utils
 import settings
 
@@ -197,7 +202,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0, err
     # Download file if it does not exist yet
     if not os.path.exists(downloaded_file_path):
         absolute_download_url = '%s%s' % (settings.CONFLUENCE_BASE_URL, clean_url)
-        print('%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name))
+        # print('%sDOWNLOAD: %s' % ('\t'*(depth+1), downloaded_file_name))
         try:
             utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
                                             auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
@@ -305,7 +310,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         page_content = response['body']['view']['value']
 
         page_title = response['title']
-        print('%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id))
+        #print('%sPAGE: %s (%s)' % ('\t'*(depth+1), page_title, page_id))
 
         # Construct unique file name
         file_name = provide_unique_file_name(page_duplicate_file_names, page_file_matching, page_title,
