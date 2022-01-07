@@ -12,8 +12,9 @@ services:
       HTTP_AUTHENTICATION_USERNAME: ""
       HTTP_AUTHENTICATION_PASSWORD: ""
       VERIFY_PEER_CERTIFICATE: "False" #recommended False
-      HTTP_PROXIES : "" #Example: HTTP_PROXIES="http:http://localhost:3128, https: http://localhost:3128"
-      HTTP_CUSTOM_HEADERS : "" # Example for custom authentication: {'user': 'johndoe', 'password': 'sup3rs3cur3pw'}
+      HTTP_PROXY : "" #Example HTTP_PROXY="http://10.10.10.10:8000
+      HTTPS_PROXY : "" #Example: HTTPS_PROXY="http://10.10.10.10:1212"
+      HTTP_CUSTOM_HEADERS : "" # Example for custom authentication: HTTP_CUSTOM_HEADERS: "cookie: anycookie value"
       EXPORT_FOLDER : "export" #default
       DOWNLOAD_SUB_FOLDER: "attachments" #default
       TEMPLATE_FILE: "template.html" #default
