@@ -1,0 +1,26 @@
+version: '3.8'
+# Start    | docker-compose up -d
+# Stop     | docker-compose stop
+# Logs     | docker-compose logs --tail=25 -f
+services:
+  confluence-dumper:
+    build: .
+    image: confluence-dumper
+    environment:
+      CONFLUENCE_BASE_URL: ""
+      SPACES_TO_EXPORT: "" # comma separated list of strings, example SPACES_TO_EXPORT: "abc ,cde , confluence_space" 
+      HTTP_AUTHENTICATION_USERNAME: ""
+      HTTP_AUTHENTICATION_PASSWORD: ""
+      VERIFY_PEER_CERTIFICATE: "False" #recommended False
+      HTTP_PROXIES : "" #Example: HTTP_PROXIES="http:http://localhost:3128, https: http://localhost:3128"
+      HTTP_CUSTOM_HEADERS : "" # Example for custom authentication: {'user': 'johndoe', 'password': 'sup3rs3cur3pw'}
+      EXPORT_FOLDER : "export" #default
+      DOWNLOAD_SUB_FOLDER: "attachments" #default
+      TEMPLATE_FILE: "template.html" #default
+      CONFLUENCE_THUMBNAIL_FORMATS: "gif, jpeg, jpg ,png" #default
+      CONFLUENCE_GENERATED_PREVIEW_FORMATS: "pdf" #default
+      HOME: "/app"  
+    working_dir: "/app"
+    volumes:
+      - "./export:/app/export"
+
