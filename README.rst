@@ -84,21 +84,18 @@ Example for custom authentication: HTTP_CUSTOM_HEADERS :"user:johndoe,password:s
 
 Run with docker compose 
 
-``
-docker-compose up 
-``
+ docker-compose up 
+
 
 Please use command 
 
-``
-docker-compose up -d 
-``
+ docker-compose up -d 
+
 
 for detached mode (all output and input will not be attached to local terminal)
 
 
 You can also copy docker-compose file to another file and run this command
 
-``
-docker-compose up -d -f <filename>
-``
+
+ docker-compose up -d -f <filename>
