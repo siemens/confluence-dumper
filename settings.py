@@ -11,10 +11,10 @@ import os
 # See the LICENSE.md file in the top-level directory.
 
 # Confluence URL
-CONFLUENCE_BASE_URL = os.getenv('CONFLUENCE_BASE_URL')
-
+CONFLUENCE_BASE_URL = os.getenv('CONFLUENCE_BASE_URL').strip("/") #have to remove slash in the end just in case
+# print(CONFLUENCE_BASE_URL)
 # A list of space keys to export (leave it empty to export all available spaces)
-SPACES_TO_EXPORT = [ i.strip() for i in os.getenv('CONFLUENCE_BASE_URL').split(", ") ]
+SPACES_TO_EXPORT = [ i.strip() for i in os.getenv('SPACES_TO_EXPORT').split(", ") ]
 
 # Confluence authentication
 # Example for HTTP Basic Authentication: ('johndoe', 'sup3rs3cur3pw')
@@ -41,10 +41,10 @@ DOWNLOAD_SUB_FOLDER = os.getenv('DOWNLOAD_SUB_FOLDER')
 TEMPLATE_FILE = os.getenv('TEMPLATE_FILE')
 
 # Confluence generates thumbnails for the following image formats
-CONFLUENCE_THUMBNAIL_FORMATS = [ i.strip() for i in os.getenv('CONFLUENCE_THUMBNAIL_FORMATS').split(",").split(", ") ]
+CONFLUENCE_THUMBNAIL_FORMATS = [ i.strip() for i in os.getenv('CONFLUENCE_THUMBNAIL_FORMATS').split(", ") ]
 
 # Confluence generates image previews for the following file formats
-CONFLUENCE_GENERATED_PREVIEW_FORMATS = [ i.strip() for i in os.getenv('CONFLUENCE_GENERATED_PREVIEW_FORMATS').split(",").split(", ") ]
+CONFLUENCE_GENERATED_PREVIEW_FORMATS = [ i.strip() for i in os.getenv('CONFLUENCE_GENERATED_PREVIEW_FORMATS').split(", ") ]
 
 # The following message is displayed for page forwardings
 HTML_FORWARD_MESSAGE = '<a href="%s">If you are not automatically forwarded to %s, please click here!</a>'

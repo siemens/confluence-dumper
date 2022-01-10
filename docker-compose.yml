@@ -14,8 +14,8 @@ services:
       VERIFY_PEER_CERTIFICATE: "False" #recommended False
       HTTP_PROXY : "" #Example HTTP_PROXY="http://10.10.10.10:8000
       HTTPS_PROXY : "" #Example: HTTPS_PROXY="http://10.10.10.10:1212"
-      HTTP_CUSTOM_HEADERS : "" # Example for custom authentication: HTTP_CUSTOM_HEADERS: "cookie: anycookie value"
-      EXPORT_FOLDER : "export" #default
+      HTTP_CUSTOM_HEADERS : "cookie:" # Example for custom authentication: HTTP_CUSTOM_HEADERS: "cookie: anycookie value"
+      EXPORT_FOLDER : "data/export" #default #has to be folder in folder, otherwise script does not work 
       DOWNLOAD_SUB_FOLDER: "attachments" #default
       TEMPLATE_FILE: "template.html" #default
       CONFLUENCE_THUMBNAIL_FORMATS: "gif, jpeg, jpg ,png" #default
@@ -23,5 +23,5 @@ services:
       HOME: "/app"  
     working_dir: "/app"
     volumes:
-      - "./export:/app/export"
+      - "./data:/app/data"
 
