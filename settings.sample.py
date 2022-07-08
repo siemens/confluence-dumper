@@ -20,6 +20,9 @@ SPACES_TO_EXPORT = []
 # Example for HTTP Basic Authentication: ('johndoe', 'sup3rs3cur3pw')
 HTTP_AUTHENTICATION = ('johndoe', 'sup3rs3cur3pw')
 
+# Alternatively, authenticate using a cookie
+HTTP_COOKIES = None
+
 # Verify x.509 certificate of confluence http server
 VERIFY_PEER_CERTIFICATE = True
 
@@ -44,3 +47,9 @@ CONFLUENCE_GENERATED_PREVIEW_FORMATS = ['pdf']
 
 # The following message is displayed for page forwardings
 HTML_FORWARD_MESSAGE = '<a href="%s">If you are not automatically forwarded to %s, please click here!</a>'
+
+# Download attachments
+GRAB_ATTACHMENTS = True
+
+# Download thumbnails
+GRAB_THUMBNAILS = True

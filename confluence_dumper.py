@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # confluence-dumper, a Python project to export spaces, pages and attachments
@@ -14,7 +15,6 @@
 Confluence-dumper is a Python project to export spaces, pages and attachments
 """
 
-from __future__ import print_function
 import sys
 import codecs
 
@@ -124,7 +124,7 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
     except XMLSyntaxError:
         print('%sWARNING: Could not parse HTML content of last page. Original content will be downloaded as it is.'
               % ('\t'*(depth+1)))
-        return html_content
+        return html_content.decode("utf-8")
 
     # Fix links to other Confluence pages
     # Example: /display/TES/pictest1
@@ -179,7 +179,7 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
         if not 'alt' in img_element.attrib.keys():
             img_element.attrib['alt'] = relative_file_path
 
-    return html.tostring(html_tree)
+    return html.tostring(html_tree).decode("utf-8")
 
 
 def download_file(clean_url, download_folder, downloaded_file_name, depth=0, error_output=True):
@@ -202,7 +202,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0, err
             utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
                                             auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                             verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                            proxies=settings.HTTP_PROXIES)
+                                            proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
 
         except utils.ConfluenceException as e:
             if error_output:
@@ -233,22 +233,23 @@ def download_attachment(download_url, download_folder, attachment_id, attachment
     downloaded_file_path = download_file(download_url, download_folder, downloaded_file_name, depth=depth)
 
     # Download the thumbnail as well if the attachment is an image
-    clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
-    downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
-    downloaded_thumbnail_file_name = provide_unique_file_name(attachment_duplicate_file_names, attachment_file_matching,
-                                                              downloaded_thumbnail_file_name)
-    if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
-        # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
-        download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth,
-                      error_output=False)
+    if settings.GRAB_THUMBNAILS:
+        clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
+        downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
+        downloaded_thumbnail_file_name = provide_unique_file_name(attachment_duplicate_file_names, attachment_file_matching,
+                                                                  downloaded_thumbnail_file_name)
+        if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
+            # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
+            download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth,
+                          error_output=False)
 
-    # Download the image preview as well if Confluence generated one for the attachment
-    if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
-        clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
-        downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
-        downloaded_preview_file_name = provide_unique_file_name(attachment_duplicate_file_names,
-                                                                attachment_file_matching, downloaded_preview_file_name)
-        download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth, error_output=False)
+        # Download the image preview as well if Confluence generated one for the attachment
+        if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
+            clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
+            downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
+            downloaded_preview_file_name = provide_unique_file_name(attachment_duplicate_file_names,
+                                                                    attachment_file_matching, downloaded_preview_file_name)
+            download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth, error_output=False)
 
     return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
 
@@ -301,7 +302,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     try:
         response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                   verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                  proxies=settings.HTTP_PROXIES)
+                                  proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
         page_content = response['body']['view']['value']
 
         page_title = response['title']
@@ -321,15 +322,17 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             counter += len(response['results'])
-            for attachment in response['results']:
-                download_url = attachment['_links']['download']
-                attachment_id = attachment['id'][3:]
-                attachment_info = download_attachment(download_url, download_folder, attachment_id,
-                                                      attachment_duplicate_file_names, attachment_file_matching,
-                                                      depth=depth+1)
-                path_collection['child_attachments'].append(attachment_info)
+
+            if settings.GRAB_ATTACHMENTS:
+                for attachment in response['results']:
+                    download_url = attachment['_links']['download']
+                    attachment_id = attachment['id'][3:]
+                    attachment_info = download_attachment(download_url, download_folder, attachment_id,
+                                                          attachment_duplicate_file_names, attachment_file_matching,
+                                                          depth=depth+1)
+                    path_collection['child_attachments'].append(attachment_info)
 
             if 'next' in response['_links'].keys():
                 page_url = response['_links']['next']
@@ -359,7 +362,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             counter += len(response['results'])
             for child_page in response['results']:
                 paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template,
@@ -445,7 +448,7 @@ def main():
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             for space in response['results']:
                 spaces_to_export.append(space['key'])
 
@@ -476,7 +479,7 @@ def main():
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
                                       headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             space_name = response['name']
 
             print('SPACE (%d/%d): %s (%s)' % (space_counter, len(spaces_to_export), space_name, space))
