@@ -13,7 +13,11 @@
 import requests
 import shutil
 import re
+import urllib3
 import urllib
+
+# SUPPRESS WARNINGS
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class ConfluenceException(Exception):
