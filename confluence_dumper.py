@@ -233,22 +233,23 @@ def download_attachment(download_url, download_folder, attachment_id, attachment
     downloaded_file_path = download_file(download_url, download_folder, downloaded_file_name, depth=depth)
 
     # Download the thumbnail as well if the attachment is an image
-    clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
-    downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
-    downloaded_thumbnail_file_name = provide_unique_file_name(attachment_duplicate_file_names, attachment_file_matching,
-                                                              downloaded_thumbnail_file_name)
-    if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
-        # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
-        download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth,
-                      error_output=False)
+    if settings.GRAB_THUMBNAILS:
+        clean_thumbnail_url = clean_url.replace('/attachments/', '/thumbnails/', 1)
+        downloaded_thumbnail_file_name = derive_downloaded_file_name(clean_thumbnail_url)
+        downloaded_thumbnail_file_name = provide_unique_file_name(attachment_duplicate_file_names, attachment_file_matching,
+                                                                  downloaded_thumbnail_file_name)
+        if utils.is_file_format(downloaded_thumbnail_file_name, settings.CONFLUENCE_THUMBNAIL_FORMATS):
+            # TODO: Confluence creates thumbnails always as PNGs but does not change the file extension to .png.
+            download_file(clean_thumbnail_url, download_folder, downloaded_thumbnail_file_name, depth=depth,
+                          error_output=False)
 
-    # Download the image preview as well if Confluence generated one for the attachment
-    if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
-        clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
-        downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
-        downloaded_preview_file_name = provide_unique_file_name(attachment_duplicate_file_names,
-                                                                attachment_file_matching, downloaded_preview_file_name)
-        download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth, error_output=False)
+        # Download the image preview as well if Confluence generated one for the attachment
+        if utils.is_file_format(downloaded_file_name, settings.CONFLUENCE_GENERATED_PREVIEW_FORMATS):
+            clean_preview_url = '/rest/documentConversion/latest/conversion/thumbnail/%s/1' % attachment_id
+            downloaded_preview_file_name = derive_downloaded_file_name(clean_preview_url)
+            downloaded_preview_file_name = provide_unique_file_name(attachment_duplicate_file_names,
+                                                                    attachment_file_matching, downloaded_preview_file_name)
+            download_file(clean_preview_url, download_folder, downloaded_preview_file_name, depth=depth, error_output=False)
 
     return {'file_name': downloaded_file_name, 'file_path': downloaded_file_path}
 
@@ -323,13 +324,15 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
                                       proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             counter += len(response['results'])
-            for attachment in response['results']:
-                download_url = attachment['_links']['download']
-                attachment_id = attachment['id'][3:]
-                attachment_info = download_attachment(download_url, download_folder, attachment_id,
-                                                      attachment_duplicate_file_names, attachment_file_matching,
-                                                      depth=depth+1)
-                path_collection['child_attachments'].append(attachment_info)
+
+            if settings.GRAB_ATTACHMENTS:
+                for attachment in response['results']:
+                    download_url = attachment['_links']['download']
+                    attachment_id = attachment['id'][3:]
+                    attachment_info = download_attachment(download_url, download_folder, attachment_id,
+                                                          attachment_duplicate_file_names, attachment_file_matching,
+                                                          depth=depth+1)
+                    path_collection['child_attachments'].append(attachment_info)
 
             if 'next' in response['_links'].keys():
                 page_url = response['_links']['next']
