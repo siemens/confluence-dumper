@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # confluence-dumper, a Python project to export spaces, pages and attachments
@@ -14,7 +15,6 @@
 Confluence-dumper is a Python project to export spaces, pages and attachments
 """
 
-from __future__ import print_function
 import sys
 import codecs
 
@@ -124,7 +124,7 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
     except XMLSyntaxError:
         print('%sWARNING: Could not parse HTML content of last page. Original content will be downloaded as it is.'
               % ('\t'*(depth+1)))
-        return html_content
+        return html_content.decode("utf-8")
 
     # Fix links to other Confluence pages
     # Example: /display/TES/pictest1
@@ -179,7 +179,7 @@ def handle_html_references(html_content, page_duplicate_file_names, page_file_ma
         if not 'alt' in img_element.attrib.keys():
             img_element.attrib['alt'] = relative_file_path
 
-    return html.tostring(html_tree)
+    return html.tostring(html_tree).decode("utf-8")
 
 
 def download_file(clean_url, download_folder, downloaded_file_name, depth=0, error_output=True):
