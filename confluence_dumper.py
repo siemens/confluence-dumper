@@ -202,7 +202,7 @@ def download_file(clean_url, download_folder, downloaded_file_name, depth=0, err
             utils.http_download_binary_file(absolute_download_url, downloaded_file_path,
                                             auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                             verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                            proxies=settings.HTTP_PROXIES)
+                                            proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
 
         except utils.ConfluenceException as e:
             if error_output:
@@ -301,7 +301,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
     try:
         response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                   verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                  proxies=settings.HTTP_PROXIES)
+                                  proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
         page_content = response['body']['view']['value']
 
         page_title = response['title']
@@ -321,7 +321,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             counter += len(response['results'])
             for attachment in response['results']:
                 download_url = attachment['_links']['download']
@@ -359,7 +359,7 @@ def fetch_page_recursively(page_id, folder_path, download_folder, html_template,
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             counter += len(response['results'])
             for child_page in response['results']:
                 paths = fetch_page_recursively(child_page['id'], folder_path, download_folder, html_template,
@@ -445,7 +445,7 @@ def main():
         while page_url:
             response = utils.http_get(page_url, auth=settings.HTTP_AUTHENTICATION, headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             for space in response['results']:
                 spaces_to_export.append(space['key'])
 
@@ -476,7 +476,7 @@ def main():
             response = utils.http_get(space_url, auth=settings.HTTP_AUTHENTICATION,
                                       headers=settings.HTTP_CUSTOM_HEADERS,
                                       verify_peer_certificate=settings.VERIFY_PEER_CERTIFICATE,
-                                      proxies=settings.HTTP_PROXIES)
+                                      proxies=settings.HTTP_PROXIES, cookies=settings.HTTP_COOKIES)
             space_name = response['name']
 
             print('SPACE (%d/%d): %s (%s)' % (space_counter, len(spaces_to_export), space_name, space))

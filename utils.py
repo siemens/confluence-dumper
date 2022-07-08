@@ -26,7 +26,7 @@ class ConfluenceException(Exception):
         super(ConfluenceException, self).__init__(message)
 
 
-def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True, proxies=None):
+def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True, proxies=None, cookies=None):
     """ Requests a HTTP url and returns a requested JSON response.
 
     :param request_url: HTTP URL to request.
@@ -37,7 +37,7 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True,
     :returns: JSON response.
     :raises: ConfluenceException in the case of the server does not answer HTTP code 200.
     """
-    response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate, proxies=proxies)
+    response = requests.get(request_url, auth=auth, headers=headers, verify=verify_peer_certificate, proxies=proxies, cookies=cookies)
     if 200 == response.status_code:
         return response.json()
     else:
@@ -46,7 +46,7 @@ def http_get(request_url, auth=None, headers=None, verify_peer_certificate=True,
 
 
 def http_download_binary_file(request_url, file_path, auth=None, headers=None, verify_peer_certificate=True,
-                              proxies=None):
+                              proxies=None, cookies=None):
     """ Requests a HTTP url to save a file on the local filesystem.
 
     :param request_url: Requested HTTP URL.
@@ -58,7 +58,7 @@ def http_download_binary_file(request_url, file_path, auth=None, headers=None, v
     :raises: ConfluenceException in the case of the server does not answer with HTTP code 200.
     """
     response = requests.get(request_url, stream=True, auth=auth, headers=headers, verify=verify_peer_certificate,
-                            proxies=proxies)
+                            proxies=proxies, cookies=cookies)
     if 200 == response.status_code:
         with open(file_path, 'wb') as downloaded_file:
             response.raw.decode_content = True
